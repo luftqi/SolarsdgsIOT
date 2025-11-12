@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "hostinger-api": {
+      "command": "hostinger-api-mcp",
+      "env": {
+        "API_TOKEN": "5tLzVeaSKiVxW8OsEqRThAoWwf4DlYqpEh2JqL9B2c54ead6",
+        "DEBUG": "false"
+      }
+    }
+  }
+}

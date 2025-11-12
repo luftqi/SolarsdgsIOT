@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: solarsdgs-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: solarsdgs_iot_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - solarsdgs-dev-network
+
+  # MQTT Broker
+  mqtt:
+    image: eclipse-mosquitto:2.0
+    container_name: solarsdgs-mqtt-dev
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - mqtt_dev_data:/mosquitto/data
+      - mqtt_dev_logs:/mosquitto/log
+      - ./mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      - solarsdgs-dev-network
+
+volumes:
+  postgres_dev_data:
+    name: solarsdgs-postgres-dev-data
+  mqtt_dev_data:
+    name: solarsdgs-mqtt-dev-data
+  mqtt_dev_logs:
+    name: solarsdgs-mqtt-dev-logs
+
+networks:
+  solarsdgs-dev-network:
+    name: solarsdgs-dev-network
+    driver: bridge

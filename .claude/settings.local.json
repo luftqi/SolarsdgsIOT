@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(tree:*)",
+      "Bash(env)",
+      "Bash(echo:*)",
+      "Bash(npx hostinger-api-mcp@latest:*)",
+      "Bash(npx -y hostinger-api-mcp@latest --help)",
+      "Bash(node scripts\\test-mcp.js:*)",
+      "Bash(node scripts/test-mcp.js:*)",
+      "Bash(hostinger-api-mcp:*)",
+      "Bash(where:*)",
+      "Bash(where npm:*)",
+      "Bash(nul)",
+      "Bash(cmd /c \"set API_TOKEN=5tLzVeaSKiVxW8OsEqRThAoWwf4DlYqpEh2JqL9B2c54ead6 && set DEBUG=true && npx --version\")",
+      "Bash(npm config:*)",
+      "Bash(node test-mcp-simple.js:*)",
+      "Bash(git init:*)",
+      "Bash(git remote add:*)",
+      "Bash(git config:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "hostinger-api"
+  ]
+}

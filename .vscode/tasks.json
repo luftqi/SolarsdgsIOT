@@ -1,0 +1,121 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    // Backend Tasks
+    {
+      "type": "npm",
+      "script": "dev",
+      "path": "backend/",
+      "label": "npm: dev - backend",
+      "detail": "Start backend development server",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "typescript",
+        "fileLocation": "relative",
+        "pattern": {
+          "regexp": "^([^\\s].*)\\((\\d+|\\d+,\\d+|\\d+,\\d+,\\d+,\\d+)\\):\\s+(error|warning|info)\\s+(TS\\d+)\\s*:\\s*(.*)$",
+          "file": 1,
+          "location": 2,
+          "severity": 3,
+          "code": 4,
+          "message": 5
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^.*Starting compilation in watch mode.*$",
+          "endsPattern": "^.*Compilation complete.*$"
+        }
+      }
+    },
+    {
+      "type": "npm",
+      "script": "build",
+      "path": "backend/",
+      "label": "npm: build - backend",
+      "detail": "Build backend for production",
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    },
+    {
+      "type": "npm",
+      "script": "test",
+      "path": "backend/",
+      "label": "npm: test - backend",
+      "detail": "Run backend tests",
+      "group": {
+        "kind": "test",
+        "isDefault": false
+      }
+    },
+
+    // Frontend Tasks
+    {
+      "type": "npm",
+      "script": "dev",
+      "path": "frontend/",
+      "label": "npm: dev - frontend",
+      "detail": "Start frontend development server",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "typescript",
+        "source": "ts",
+        "fileLocation": "relative",
+        "pattern": {
+          "regexp": "^([^\\s].*)\\((\\d+|\\d+,\\d+|\\d+,\\d+,\\d+,\\d+)\\):\\s+(error|warning|info)\\s+(TS\\d+)\\s*:\\s*(.*)$",
+          "file": 1,
+          "location": 2,
+          "severity": 3,
+          "code": 4,
+          "message": 5
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Local:.*http://localhost:5173"
+        }
+      }
+    },
+    {
+      "type": "npm",
+      "script": "build",
+      "path": "frontend/",
+      "label": "npm: build - frontend",
+      "detail": "Build frontend for production",
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    },
+
+    // Docker Tasks
+    {
+      "label": "Docker: Start Dev Environment",
+      "type": "shell",
+      "command": "docker-compose -f docker/docker-compose.dev.yml up",
+      "detail": "Start development Docker containers",
+      "isBackground": true
+    },
+    {
+      "label": "Docker: Stop Dev Environment",
+      "type": "shell",
+      "command": "docker-compose -f docker/docker-compose.dev.yml down",
+      "detail": "Stop development Docker containers"
+    },
+    {
+      "label": "Docker: Build All",
+      "type": "shell",
+      "command": "docker-compose -f docker/docker-compose.yml build",
+      "detail": "Build all Docker images"
+    },
+
+    // Combined Tasks
+    {
+      "label": "Start Full Stack",
+      "dependsOn": ["npm: dev - backend", "npm: dev - frontend"],
+      "problemMatcher": [],
+      "detail": "Start both backend and frontend"
+    }
+  ]
+}

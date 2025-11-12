@@ -1,0 +1,87 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# Build Output
+dist/
+build/
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+*.log.*
+
+# OS Files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Testing
+coverage/
+.nyc_output/
+*.lcov
+
+# Docker
+docker/*/data/
+*.pid
+
+# Database
+*.sqlite
+*.db
+
+# Temporary Files
+tmp/
+temp/
+*.tmp
+
+# Python (MicroPython firmware)
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+ENV/
+
+# Backend specific
+backend/dist/
+backend/logs/
+backend/.env
+
+# Frontend specific
+frontend/dist/
+frontend/.env
+frontend/.env.production
+
+# Docker volumes
+postgres_data/
+mqtt_data/
+mqtt_logs/
+
+# Test files
+test-mcp-simple.js
+diagnose-mcp.js
+nul

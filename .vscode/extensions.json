@@ -1,0 +1,36 @@
+{
+  "recommendations": [
+    // TypeScript/JavaScript
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "ms-vscode.vscode-typescript-next",
+
+    // Vue.js
+    "Vue.volar",
+    "Vue.vscode-typescript-vue-plugin",
+
+    // Git
+    "eamodio.gitlens",
+    "mhutchie.git-graph",
+
+    // Utilities
+    "usernamehw.errorlens",
+    "christian-kohler.path-intellisense",
+    "editorconfig.editorconfig",
+
+    // Docker
+    "ms-azuretools.vscode-docker",
+
+    // Database
+    "cweijan.vscode-postgresql-client2",
+
+    // MQTT
+    "rpdswtk.vsmqtt",
+
+    // Markdown
+    "yzhang.markdown-all-in-one",
+
+    // Icons
+    "vscode-icons-team.vscode-icons"
+  ]
+}
