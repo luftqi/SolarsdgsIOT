@@ -180,3 +180,4 @@ npm install -g hostinger-api-mcp
 **建立時間**: 2025-11-12
 **狀態**: 等待全域安裝 hostinger-api-mcp
 **下一步**: 執行 `npm install -g hostinger-api-mcp` 並重啟 Claude Code
+
