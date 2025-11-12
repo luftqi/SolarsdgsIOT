@@ -1,7 +1,10 @@
-# SolarSDGs IoT - 太陽能功率監控系統
+# SolarSDGs IoT - Solar Power Monitoring System
 
-> 🌞 專業的 IoT 太陽能監控平台 | 從 Node-RED 遷移到 Node.js + Vue.js  
-> 即時功率監控 · GPS 定位追蹤 · 多租戶架構 · 4G NB-IoT 通訊
+> 🌞 Professional IoT Solar Monitoring Platform
+> Real-time Power Monitoring · GPS Tracking · Multi-tenant Architecture · 4G NB-IoT
+
+**太陽能功率監控系統** | 從 Node-RED 遷移到 Node.js + Vue.js
+即時功率監控 · GPS 定位追蹤 · 多租戶架構 · 4G NB-IoT 通訊
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
