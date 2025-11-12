@@ -19,7 +19,10 @@
       "Bash(git init:*)",
       "Bash(git remote add:*)",
       "Bash(git config:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\ndocs: 完整環境設置文檔與專案架構初始化\n\n新增文檔:\n- docs/ENVIRONMENT_SETUP.md: 完整的生產環境設置指南\n  * VPS 資訊與 SSH 連接\n  * DNS 設定與域名配置\n  * Hostinger API 整合\n  * Docker + Caddy 架構\n  * 10 階段完整部署流程\n  * 服務管理與故障排除\n\n- docs/VPS_QUICK_REFERENCE.md: 快速參考卡片\n  * 所有關鍵資訊一頁搞定\n  * 常用命令速查\n  * 緊急處理指令\n\n- DOCUMENTATION_UPDATE.md: 文檔更新記錄\n  * 完整的更新說明\n  * 文檔導航指南\n  * 下一步計劃\n\n更新文檔:\n- docs/MCP_SETUP.md: 更新 API Token 與測試結果\n- README.md: 添加新文檔連結\n- .gitignore: 排除測試文件\n\n專案架構:\n- 完整的 TypeScript 後端架構\n- Vue 3 + Vite 前端架構\n- Docker Compose 部署配置\n- MQTT + PostgreSQL 整合\n- Node-RED 工作流引擎\n\n技術棧:\n- Backend: Node.js + Express + TypeScript\n- Frontend: Vue 3 + TypeScript + Vite\n- Database: PostgreSQL 16\n- Message Queue: Eclipse Mosquitto MQTT\n- Reverse Proxy: Caddy (自動 HTTPS)\n- Deployment: Docker Compose\n\nVPS 資訊:\n- IP: 72.61.117.219\n- Hostname: srv1122961.hstgr.cloud\n- OS: Ubuntu 24.04 LTS\n- Location: Malaysia - Kuala Lumpur\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git branch:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
