@@ -210,3 +210,4 @@ echo "     cd /opt/solarsdgs-iot"
 echo "     docker compose up -d"
 echo ""
 echo "=========================================="
+
