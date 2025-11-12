@@ -172,3 +172,4 @@ const displayValue = computed(() => props.value.toFixed(2));
 ## 授權
 
 MIT License
+
