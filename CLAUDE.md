@@ -649,3 +649,4 @@ watch(() => data.value, (newVal, oldVal) => {
 **最後更新**: 2025-11-12  
 **適用階段**: Phase 0 - Phase 4 全階段  
 **維護者**: SolarSDGs Development Team
+
