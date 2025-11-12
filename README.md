@@ -347,37 +347,46 @@ docker-compose -f docker/docker-compose.prod.yml up -d
 
 ---
 
-## 📚 文檔
+## 📚 Documentation
 
-### 開發文檔
-- [環境設置指南](docs/development/01-setup.md)
-- [程式碼規範](CODING_STANDARDS.md)
-- [Git 工作流程](docs/development/03-git-workflow.md)
-- [測試指南](docs/development/04-testing.md)
+**Language**: [English](#) | [繁體中文](.github/README_ZH.md)
 
-### 架構文檔
-- [系統架構概覽](docs/architecture/01-overview.md)
-- [數據流程設計](docs/architecture/02-data-flow.md)
-- [API 設計文檔](docs/architecture/03-api-design.md)
-- [資料庫設計](docs/architecture/04-database-schema.md)
+### 🌟 Essential Documents (Must Read)
 
-### API 文檔
-- [設備 API](docs/api/devices.md)
-- [功率數據 API](docs/api/power-data.md)
-- [GPS API](docs/api/gps.md)
-- [認證 API](docs/api/auth.md)
+1. **[Environment Setup Guide](docs/ENVIRONMENT_SETUP.md)** ⭐
+   Complete production environment setup with VPS + Docker + Caddy architecture (1000+ lines)
 
-### 部署文檔
-- **[環境設置指南](docs/ENVIRONMENT_SETUP.md)** ⭐ 最新！VPS + DNS + Caddy + Docker
-- [快速開始指南](docs/deployment/QUICK_START.md)
-- [Docker 設置](docs/deployment/01-docker-setup.md)
-- [VPS 部署](docs/deployment/02-vps-deployment.md)
-- [監控設置](docs/deployment/03-monitoring.md)
-- [MCP 設置](docs/MCP_SETUP.md)
+2. **[VPS Quick Reference](docs/VPS_QUICK_REFERENCE.md)** ⚡
+   Quick reference card with all key information and common commands
 
-### 遷移指南
-- [從 Node-RED 遷移](docs/migration/node-red-to-nodejs.md)
-- [資料遷移指南](docs/migration/data-migration.md)
+3. **[Claude Code Guide](CLAUDE.md)** 🤖
+   Development guidelines and best practices for using Claude Code
+
+4. **[Documentation Update Log](DOCUMENTATION_UPDATE.md)** 📋
+   Complete record of all documentation updates and changes
+
+### Development Docs
+
+- **[Coding Standards](CODING_STANDARDS.md)** - Detailed coding conventions and best practices
+- **[File Navigation](FILE_NAVIGATION.md)** - Project structure and file organization guide
+- **[Deployment Steps](DEPLOYMENT_STEPS.md)** - Complete deployment workflow
+- **[Project Summary](PROJECT_SUMMARY.md)** - High-level project overview and goals
+- **[Setup Complete](SETUP_COMPLETE.md)** - Post-setup verification checklist
+
+### Deployment Docs
+
+- **[Quick Start Guide](docs/deployment/QUICK_START.md)** - Fast deployment to Hostinger VPS
+- **[MCP Setup](docs/MCP_SETUP.md)** - Hostinger API integration guide
+- **[MCP Installation](MCP_INSTALLATION.md)** - MCP installation instructions
+
+### Architecture Overview
+
+- **Backend**: Node.js + Express + TypeScript
+- **Frontend**: Vue 3 + TypeScript + Vite
+- **Database**: PostgreSQL 16
+- **Message Queue**: Eclipse Mosquitto MQTT
+- **Reverse Proxy**: Caddy (Auto HTTPS with Let's Encrypt)
+- **Deployment**: Docker Compose with multi-service orchestration
 
 ---
 
