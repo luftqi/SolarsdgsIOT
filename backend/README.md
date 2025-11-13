@@ -9,9 +9,13 @@
 - **資料庫**: PostgreSQL 16 + node-pg
 - **MQTT**: MQTT.js 5.0+
 - **即時通訊**: Socket.io 4.6+
-- **驗證**: JWT
-- **日誌**: Winston
+- **驗證**: JWT (jsonwebtoken)
+- **日誌**: Winston 3.11+
 - **測試**: Jest + Supertest
+- **圖像處理**: Sharp 0.33+ (圖像壓縮、縮圖、格式轉換)
+- **檔案上傳**: Multer 1.4+ (多部分表單數據處理)
+- **CSV 生成**: csv-writer 1.6+
+- **UUID 生成**: uuid 9.0+
 
 ## 快速開始
 
@@ -50,8 +54,9 @@ backend/
 │   ├── models/          # 資料模型
 │   ├── services/        # 業務邏輯層
 │   │   ├── mqtt/        # MQTT 服務
-│   │   ├── database/    # 資料庫服務
+│   │   ├── database/    # 資料庫服務 (含 CsvExporter)
 │   │   ├── device/      # 設備服務
+│   │   ├── image/       # 圖像服務 (新增)
 │   │   └── realtime/    # 即時數據服務
 │   ├── controllers/     # 控制器層
 │   ├── routes/          # 路由定義
@@ -61,7 +66,13 @@ backend/
 │   ├── app.ts           # Express 應用配置
 │   └── server.ts        # 伺服器入口
 ├── tests/               # 測試檔案
-└── scripts/             # 腳本工具
+├── scripts/             # 腳本工具
+├── uploads/             # 上傳檔案儲存 (新增)
+│   └── images/          # 圖像儲存
+│       ├── rgb/         # RGB 圖像
+│       ├── thermal/     # 熱影像
+│       └── thumbnails/  # 縮圖
+└── exports/             # CSV 匯出檔案 (新增)
 ```
 
 ## 可用命令
@@ -107,6 +118,16 @@ npm run db:seed          # 填充測試數據
 ### GPS 位置
 - `GET /api/gps/:deviceId` - 獲取 GPS 位置
 - `POST /api/gps` - 更新 GPS 位置
+
+### 圖像管理 (新增)
+- `POST /api/images/upload` - 上傳 RGB + 熱影像圖 (multipart/form-data)
+- `GET /api/images/:deviceId` - 獲取設備圖像列表
+- `GET /api/images/:id` - 獲取單張圖像資訊
+- `DELETE /api/images/:id` - 刪除圖像
+
+### 數據匯出 (新增)
+- `GET /api/export/power-data/:deviceId?start=&end=` - 匯出功率數據 CSV
+- `GET /api/export/gps/:deviceId?start=&end=` - 匯出 GPS 數據 CSV
 
 ### 認證
 - `POST /api/auth/login` - 登入

@@ -43,12 +43,20 @@ solarsdgs-iot/
 │   │   │   │   ├── GpsLocationRepo.ts    # GPS 位置儲存庫
 │   │   │   │   ├── DeviceRepo.ts         # 設備儲存庫
 │   │   │   │   ├── ConfigRepo.ts         # 配置儲存庫
-│   │   │   │   └── SqlGenerator.ts       # SQL 生成器 (替代 Node-RED SQL生成器)
+│   │   │   │   ├── ImageRepo.ts          # 圖像儲存庫 (新增)
+│   │   │   │   ├── SqlGenerator.ts       # SQL 生成器 (替代 Node-RED SQL生成器)
+│   │   │   │   └── CsvExporter.ts        # CSV 匯出器 (新增)
 │   │   │   │
 │   │   │   ├── device/
 │   │   │   │   ├── DeviceManager.ts      # 設備管理器
 │   │   │   │   ├── ConfigSync.ts         # 配置同步器 (替代 Node-RED 配置同步器)
 │   │   │   │   └── ControlHandler.ts     # 控制處理器
+│   │   │   │
+│   │   │   ├── image/                    # 圖像服務 (新增)
+│   │   │   │   ├── ImageService.ts       # 圖像處理服務
+│   │   │   │   ├── ImageUploadHandler.ts # 圖像上傳處理器
+│   │   │   │   ├── ThumbnailGenerator.ts # 縮圖生成器
+│   │   │   │   └── ImageStorage.ts       # 圖像儲存管理
 │   │   │   │
 │   │   │   └── realtime/
 │   │   │       ├── WebSocketService.ts   # WebSocket 服務
@@ -60,6 +68,8 @@ solarsdgs-iot/
 │   │   │   ├── PowerDataController.ts # 功率數據 API
 │   │   │   ├── GpsController.ts      # GPS API
 │   │   │   ├── ConfigController.ts   # 配置 API
+│   │   │   ├── ImageController.ts    # 圖像 API (新增)
+│   │   │   ├── ExportController.ts   # 數據匯出 API (新增)
 │   │   │   └── AuthController.ts     # 認證 API
 │   │   │
 │   │   ├── routes/                   # 路由定義
@@ -134,14 +144,21 @@ solarsdgs-iot/
 │   │   │   ├── dashboard/           # 儀表板組件
 │   │   │   │   ├── PowerCard.vue    # 功率卡片 (PG/PA/PP)
 │   │   │   │   ├── EfficiencyCard.vue # 效率卡片 (PAG/PPG)
-│   │   │   │   ├── PowerChart.vue   # 功率圖表
+│   │   │   │   ├── PowerChart.vue   # 功率圖表 (支援 zoom/annotation)
 │   │   │   │   ├── EfficiencyChart.vue # 效率圖表
 │   │   │   │   ├── TimeRangeSelector.vue # 時間範圍選擇器
-│   │   │   │   └── DeviceSelector.vue # 設備選擇器
+│   │   │   │   ├── DeviceSelector.vue # 設備選擇器
+│   │   │   │   └── DataExporter.vue # 數據匯出器 (CSV) (新增)
 │   │   │   │
 │   │   │   ├── map/                 # 地圖組件
 │   │   │   │   ├── GpsMap.vue       # GPS 地圖 (Leaflet)
 │   │   │   │   └── DeviceMarker.vue # 設備標記
+│   │   │   │
+│   │   │   ├── image/               # 圖像組件 (新增)
+│   │   │   │   ├── ImageViewer.vue  # 圖像檢視器 (Viewerjs)
+│   │   │   │   ├── ImageTimeline.vue # 圖像時間軸
+│   │   │   │   ├── ImageGallery.vue # 圖像畫廊
+│   │   │   │   └── ThermalRgbComparison.vue # 熱影像/RGB對比
 │   │   │   │
 │   │   │   ├── control/             # 控制組件
 │   │   │   │   ├── ConfigPanel.vue  # 配置面板
@@ -157,6 +174,7 @@ solarsdgs-iot/
 │   │   │   ├── LoginView.vue        # 登入頁面
 │   │   │   ├── DashboardView.vue    # 儀表板頁面
 │   │   │   ├── DeviceView.vue       # 設備詳情頁面
+│   │   │   ├── ImageGalleryView.vue # 圖像瀏覽頁面 (新增)
 │   │   │   ├── AdminView.vue        # 管理員頁面
 │   │   │   └── NotFoundView.vue     # 404 頁面
 │   │   │
@@ -165,6 +183,9 @@ solarsdgs-iot/
 │   │   │   ├── useRealtime.ts       # 即時數據
 │   │   │   ├── useChart.ts          # 圖表邏輯
 │   │   │   ├── useDevice.ts         # 設備操作
+│   │   │   ├── useImage.ts          # 圖像操作 (新增)
+│   │   │   ├── useImageViewer.ts    # 圖像檢視器 (新增)
+│   │   │   ├── useCsvExport.ts      # CSV 匯出 (新增)
 │   │   │   └── useAuth.ts           # 認證邏輯
 │   │   │
 │   │   ├── stores/                   # Pinia 狀態管理
@@ -172,6 +193,7 @@ solarsdgs-iot/
 │   │   │   ├── device.ts            # 設備狀態
 │   │   │   ├── powerData.ts         # 功率數據狀態
 │   │   │   ├── gps.ts               # GPS 狀態
+│   │   │   ├── image.ts             # 圖像狀態 (新增)
 │   │   │   └── ui.ts                # UI 狀態
 │   │   │
 │   │   ├── services/                 # API 服務
@@ -179,6 +201,8 @@ solarsdgs-iot/
 │   │   │   ├── deviceApi.ts         # 設備 API
 │   │   │   ├── powerDataApi.ts      # 功率數據 API
 │   │   │   ├── gpsApi.ts            # GPS API
+│   │   │   ├── imageApi.ts          # 圖像 API (新增)
+│   │   │   ├── exportApi.ts         # 數據匯出 API (新增)
 │   │   │   └── authApi.ts           # 認證 API
 │   │   │
 │   │   ├── router/                   # Vue Router

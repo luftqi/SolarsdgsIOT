@@ -138,15 +138,27 @@ echo ".env" >> .gitignore
 
 # 4. 建立後端目錄結構
 mkdir -p backend/src/{config,models,services,controllers,routes,middleware,utils,types}
-mkdir -p backend/src/services/{mqtt,database,device,realtime}
+mkdir -p backend/src/services/{mqtt,database,device,image,realtime}
 mkdir -p backend/tests/{unit,integration,e2e}
+mkdir -p backend/uploads/images/{rgb,thermal,thumbnails}
 
 # 5. 初始化後端專案
 cd backend
 npm init -y
+
+# 核心依賴
 npm install express typescript @types/node @types/express
 npm install mqtt pg socket.io winston
+
+# 圖像處理與檔案上傳 (已安裝)
+npm install multer sharp uuid
+
+# 數據匯出 (已安裝)
+npm install csv-writer
+
+# 開發工具
 npm install -D eslint prettier @typescript-eslint/parser
+npm install -D @types/multer @types/uuid
 ```
 
 #### 1.2 優先開發順序
@@ -161,15 +173,21 @@ npm install -D eslint prettier @typescript-eslint/parser
 - [ ] `PowerDataRepo.ts` - 功率數據儲存庫
 - [ ] `DeviceRepo.ts` - 設備儲存庫
 - [ ] `GpsLocationRepo.ts` - GPS 位置儲存庫
+- [ ] `ImageRepo.ts` - 圖像儲存庫 (新增)
 
 **第三週**: API 層
 - [ ] Routes 定義
-- [ ] Controllers 實作
+- [ ] Controllers 實作 (Device, PowerData, GPS)
 - [ ] 中介軟體（錯誤處理、驗證）
+- [ ] 圖像上傳 API (新增)
+- [ ] CSV 匯出 API (新增)
 
-**第四週**: 即時推送
+**第四週**: 即時推送 & 圖像處理
 - [ ] `WebSocketService.ts` - WebSocket 連接
 - [ ] `UiFormatter.ts` - UI 數據格式化
+- [ ] `ImageService.ts` - 圖像處理服務 (新增)
+- [ ] `ThumbnailGenerator.ts` - 縮圖生成器 (新增)
+- [ ] `CsvExporter.ts` - CSV 匯出器 (新增)
 
 ### Phase 2: 前端開發
 
@@ -182,10 +200,24 @@ cd frontend
 # 2. 使用 Vite 初始化 Vue 3 + TypeScript 專案
 npm create vite@latest . -- --template vue-ts
 
-# 3. 安裝依賴
+# 3. 安裝核心依賴
 npm install
 npm install pinia vue-router axios socket.io-client
+
+# 4. 圖表與地圖 (已安裝)
 npm install chart.js vue-chartjs leaflet
+npm install chartjs-plugin-zoom chartjs-plugin-annotation chartjs-adapter-dayjs-4
+
+# 5. 圖像處理與檢視 (已安裝)
+npm install viewerjs v-viewer
+
+# 6. 數據處理與匯出 (已安裝)
+npm install file-saver papaparse
+
+# 7. TypeScript 類型定義 (已安裝)
+npm install -D @types/leaflet @types/file-saver @types/papaparse
+
+# 8. 開發工具
 npm install -D @typescript-eslint/eslint-plugin
 ```
 
@@ -193,25 +225,30 @@ npm install -D @typescript-eslint/eslint-plugin
 
 **第一週**: 基礎設施
 - [ ] 路由設置（Vue Router）
-- [ ] 狀態管理（Pinia Stores）
-- [ ] API 服務層
+- [ ] 狀態管理（Pinia Stores: auth, device, powerData, gps, image）
+- [ ] API 服務層（deviceApi, powerDataApi, imageApi, exportApi）
 - [ ] 基礎布局組件
 
 **第二週**: Dashboard 組件
 - [ ] `PowerCard.vue` - 功率卡片
 - [ ] `EfficiencyCard.vue` - 效率卡片
-- [ ] `PowerChart.vue` - 功率圖表
+- [ ] `PowerChart.vue` - 功率圖表（支援 zoom/annotation）
 - [ ] `TimeRangeSelector.vue` - 時間範圍選擇器
+- [ ] `DataExporter.vue` - CSV 匯出器 (新增)
 
 **第三週**: 進階功能
-- [ ] GPS 地圖組件
+- [ ] GPS 地圖組件 (Leaflet)
 - [ ] 設備管理頁面
 - [ ] 即時數據推送（WebSocket）
+- [ ] 圖像檢視器組件 (Viewerjs) (新增)
+- [ ] 圖像時間軸組件 (新增)
+- [ ] 圖像瀏覽頁面 (新增)
 
 **第四週**: 測試與優化
-- [ ] 單元測試
-- [ ] 端對端測試
-- [ ] 效能優化
+- [ ] 單元測試（Vitest）
+- [ ] 端對端測試（Playwright）
+- [ ] 圖像載入優化
+- [ ] 圖表渲染效能優化
 
 ### Phase 3: 整合測試
 

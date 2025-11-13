@@ -34,6 +34,7 @@ SolarSDGs IoT 是一個完整的太陽能發電監控系統，專為商業化多
 - **效率計算**: 自動計算 PAG 和 PPG 效率指標
 - **批次處理**: 支援離線緩存與批次上傳
 - **數據驗證**: 自動過濾異常數據
+- **數據匯出**: 支援 CSV 格式匯出歷史數據
 
 ### 設備管理
 - **遠端控制**: 支援遠端重啟、OTA 更新（規劃中）
@@ -41,9 +42,17 @@ SolarSDGs IoT 是一個完整的太陽能發電監控系統，專為商業化多
 - **狀態監控**: 即時顯示設備在線狀態
 - **多設備支援**: 可管理 100+ 台設備
 
+### 圖像監控 (新功能)
+- **自動拍攝**: Pi Zero 2W 每 10 分鐘自動拍攝 RGB 與熱影像圖
+- **圖像上傳**: HTTP 多部分上傳，自動生成縮圖
+- **圖像儲存**: 檔案系統儲存 + 資料庫元數據管理
+- **圖像瀏覽**: 支援時間軸瀏覽、縮放、全螢幕檢視
+- **圖像處理**: 使用 Sharp 進行壓縮與縮圖生成
+
 ### 數據可視化
 - **即時儀表板**: 卡片式顯示當前功率與效率
 - **歷史圖表**: 使用 Chart.js 繪製折線圖與柱狀圖
+- **圖表增強**: 支援縮放、平移、註釋、時間軸控制
 - **GPS 地圖**: 使用 Leaflet 顯示設備位置
 - **時間範圍**: Live / 1h / 6h / 1d / 1w / 1mo / 3mo / 6mo / 1y
 
@@ -216,16 +225,23 @@ solarsdgs-iot/
 - **日誌**: Winston 3.8+
 - **測試**: Jest + Supertest
 - **API 文檔**: Swagger/OpenAPI
+- **圖像處理**: Sharp 0.33+ (調整大小、壓縮、格式轉換)
+- **檔案上傳**: Multer 1.4+ (多部分表單數據處理)
+- **CSV 生成**: csv-writer 1.6+
+- **UUID 生成**: uuid 9.0+
 
 ### 前端
 - **框架**: Vue 3.4+ (Composition API)
-- **建構工具**: Vite 5.0+
+- **建構工具**: Vite 6.4+
 - **語言**: TypeScript 5.0+
 - **狀態管理**: Pinia 2.1+
 - **路由**: Vue Router 4.2+
 - **HTTP 客戶端**: Axios 1.6+
-- **圖表**: Chart.js 4.4+
+- **圖表**: Chart.js 4.4+ with plugins (zoom, annotation, time adapter)
 - **地圖**: Leaflet 1.9+
+- **圖像檢視器**: Viewerjs 1.11+ / v-viewer 3.0+
+- **CSV 處理**: PapaParse 5.5+
+- **檔案下載**: file-saver 2.0+
 - **UI 框架**: Element Plus 2.4+ (可選)
 
 ### DevOps
@@ -284,6 +300,21 @@ CREATE TABLE device_config (
   pizero2_on INTEGER DEFAULT 5,
   pizero2_off INTEGER DEFAULT 55,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 圖像資料表 (新增)
+CREATE TABLE images (
+  id SERIAL PRIMARY KEY,
+  device_id VARCHAR(50) REFERENCES devices(device_id),
+  rgb_image_path VARCHAR(255) NOT NULL,
+  thermal_image_path VARCHAR(255) NOT NULL,
+  rgb_thumbnail_path VARCHAR(255),
+  thermal_thumbnail_path VARCHAR(255),
+  rgb_file_size INTEGER,
+  thermal_file_size INTEGER,
+  captured_at TIMESTAMP NOT NULL,
+  uploaded_at TIMESTAMP DEFAULT NOW(),
+  metadata JSONB
 );
 ```
 
@@ -427,7 +458,10 @@ npm run lint:fix
 ## 🐛 已知問題
 
 ### 開發中功能
-- ⏳ OTA 遠端更新功能（開發中）
+- ✅ **圖像監控功能** - 已完成套件安裝與架構設計
+- ✅ **CSV 數據匯出** - 已完成套件安裝
+- ✅ **圖表增強功能** - 已安裝 zoom, annotation, time adapter 套件
+- ⏳ OTA 遠端更新功能（規劃中）
 - ⏳ MQTT TLS 加密（規劃中）
 - ⏳ 多語言支援（規劃中）
 - ⏳ 移動 App（規劃中）

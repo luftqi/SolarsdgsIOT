@@ -20,6 +20,29 @@ Claude Code 在遇到任何錯誤或問題時:
 5. **✅ 必須做**: 提供 3-5 個可能的修復方案
 6. **✅ 必須做**: 等待用戶明確選擇後再繼續
 
+### ⛔ 禁止未經同意創建腳本或文件 (NEVER CREATE WITHOUT PERMISSION)
+
+**重要性**: ⭐⭐⭐⭐⭐
+
+Claude Code 在創建新文件或腳本時:
+
+1. **❌ 絕對禁止**: 未經用戶明確同意就創建新的腳本文件
+2. **❌ 絕對禁止**: 自動生成多個「輔助工具」或「部署腳本」
+3. **❌ 絕對禁止**: 創建用戶沒有要求的「便利工具」
+4. **✅ 必須做**: 先詢問用戶是否需要創建該文件
+5. **✅ 必須做**: 說明為什麼需要這個文件
+6. **✅ 必須做**: 等待用戶明確同意後才創建
+
+**正確流程**:
+```
+需要新文件 → 說明原因 → 詢問用戶 → 等待同意 → 創建文件
+```
+
+**用戶偏好**:
+- 用戶希望自己 100% 控制所有文件的創建
+- 如需安裝依賴，直接連接 VPS 執行命令，不要創建腳本
+- 盡量使用現有工具和直接執行，而非創建新腳本
+
 **錯誤處理流程**:
 ```
 遇到錯誤 → 停止 → 分析原因 → 提供方案 → 等待確認 → 執行修復
@@ -78,8 +101,29 @@ Database (PostgreSQL)
 | 格式化UI數據 Function | `UiFormatter.format()` | `backend/src/services/realtime/UiFormatter.ts` |
 | MQTT Out | `MqttService.publish()` | `backend/src/services/mqtt/MqttService.ts` |
 | Dashboard Template | Vue Components | `frontend/src/components/` |
+| **圖像上傳處理** (新增) | `ImageService.upload()` | `backend/src/services/image/ImageService.ts` |
+| **CSV 匯出** (新增) | `CsvExporter.export()` | `backend/src/services/database/CsvExporter.ts` |
 
 **重要**: 每個 Node-RED Function 節點都應該轉換成對應的 TypeScript class 或 function
+
+### 3. **新增功能架構 (2025-11-13)**
+
+#### 圖像監控系統
+- **Pi Zero 2W 自動拍攝**: 每 10 分鐘拍攝 RGB + 熱影像圖
+- **圖像上傳**: HTTP POST multipart/form-data
+- **圖像處理**: Sharp (壓縮、縮圖生成、格式轉換)
+- **儲存架構**: 檔案系統 + PostgreSQL 元數據
+- **前端檢視**: Viewerjs (縮放、全螢幕、時間軸)
+
+#### 數據匯出系統
+- **匯出格式**: 僅支援 CSV (不支援 Excel/PDF)
+- **匯出內容**: 功率數據、GPS 數據、設備狀態
+- **前端處理**: PapaParse (CSV 解析) + file-saver (下載)
+
+#### 圖表增強功能
+- **縮放與平移**: chartjs-plugin-zoom
+- **註釋標記**: chartjs-plugin-annotation
+- **時間軸**: chartjs-adapter-dayjs-4
 
 ---
 
@@ -366,6 +410,313 @@ const cardStyle = computed(() => ({
   margin-left: 4px;
 }
 </style>
+```
+
+---
+
+## 📝 新增功能程式碼範本 (2025-11-13)
+
+### 圖像上傳服務範本
+
+```typescript
+// backend/src/services/image/ImageService.ts
+
+import sharp from 'sharp';
+import { v4 as uuidv4 } from 'uuid';
+import path from 'path';
+import fs from 'fs/promises';
+import { AppError } from '@/utils/errors';
+import { Logger } from '@/utils/logger';
+import type { ImageRepo } from '@/services/database/ImageRepo';
+
+interface UploadedImage {
+  deviceId: string;
+  rgbImage: Express.Multer.File;
+  thermalImage: Express.Multer.File;
+  capturedAt: Date;
+}
+
+export class ImageService {
+  private readonly logger = new Logger(ImageService.name);
+  private readonly uploadDir = path.join(__dirname, '../../../uploads/images');
+
+  constructor(private readonly imageRepo: ImageRepo) {}
+
+  /**
+   * 處理圖像上傳（RGB + 熱影像）
+   */
+  async uploadImages(data: UploadedImage) {
+    try {
+      // 1. 生成唯一 ID
+      const imageId = uuidv4();
+
+      // 2. 儲存原始圖像
+      const rgbPath = await this.saveImage(data.rgbImage, imageId, 'rgb');
+      const thermalPath = await this.saveImage(data.thermalImage, imageId, 'thermal');
+
+      // 3. 生成縮圖
+      const rgbThumbPath = await this.generateThumbnail(rgbPath, imageId, 'rgb');
+      const thermalThumbPath = await this.generateThumbnail(thermalPath, imageId, 'thermal');
+
+      // 4. 儲存元數據到資料庫
+      const saved = await this.imageRepo.insert({
+        deviceId: data.deviceId,
+        rgbImagePath: rgbPath,
+        thermalImagePath: thermalPath,
+        rgbThumbnailPath: rgbThumbPath,
+        thermalThumbnailPath: thermalThumbPath,
+        rgbFileSize: data.rgbImage.size,
+        thermalFileSize: data.thermalImage.size,
+        capturedAt: data.capturedAt
+      });
+
+      this.logger.info(`Images uploaded for device ${data.deviceId}`);
+      return saved;
+
+    } catch (error) {
+      this.logger.error('Failed to upload images:', error);
+      throw new AppError(500, 'Failed to upload images');
+    }
+  }
+
+  /**
+   * 儲存圖像檔案
+   */
+  private async saveImage(
+    file: Express.Multer.File,
+    imageId: string,
+    type: 'rgb' | 'thermal'
+  ): Promise<string> {
+    const dir = path.join(this.uploadDir, type);
+    await fs.mkdir(dir, { recursive: true });
+
+    const filename = `${imageId}.jpg`;
+    const filepath = path.join(dir, filename);
+
+    // 使用 Sharp 壓縮並儲存
+    await sharp(file.buffer)
+      .jpeg({ quality: 85 })
+      .toFile(filepath);
+
+    return `/uploads/images/${type}/${filename}`;
+  }
+
+  /**
+   * 生成縮圖
+   */
+  private async generateThumbnail(
+    imagePath: string,
+    imageId: string,
+    type: 'rgb' | 'thermal'
+  ): Promise<string> {
+    const dir = path.join(this.uploadDir, 'thumbnails', type);
+    await fs.mkdir(dir, { recursive: true });
+
+    const filename = `${imageId}_thumb.jpg`;
+    const filepath = path.join(dir, filename);
+
+    const fullPath = path.join(__dirname, '../../..', imagePath);
+
+    await sharp(fullPath)
+      .resize(320, 240, { fit: 'cover' })
+      .jpeg({ quality: 80 })
+      .toFile(filepath);
+
+    return `/uploads/images/thumbnails/${type}/${filename}`;
+  }
+}
+```
+
+### CSV 匯出服務範本
+
+```typescript
+// backend/src/services/database/CsvExporter.ts
+
+import { createObjectCsvWriter } from 'csv-writer';
+import path from 'path';
+import { AppError } from '@/utils/errors';
+import { Logger } from '@/utils/logger';
+import type { PowerDataRepo } from './PowerDataRepo';
+
+export class CsvExporter {
+  private readonly logger = new Logger(CsvExporter.name);
+  private readonly exportDir = path.join(__dirname, '../../../exports');
+
+  constructor(private readonly powerDataRepo: PowerDataRepo) {}
+
+  /**
+   * 匯出功率數據為 CSV
+   */
+  async exportPowerData(
+    deviceId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<string> {
+    try {
+      // 1. 查詢數據
+      const data = await this.powerDataRepo.findByDateRange(
+        deviceId,
+        startDate,
+        endDate
+      );
+
+      if (data.length === 0) {
+        throw new AppError(404, 'No data found for the specified date range');
+      }
+
+      // 2. 建立 CSV Writer
+      const filename = `power_data_${deviceId}_${Date.now()}.csv`;
+      const filepath = path.join(this.exportDir, filename);
+
+      const csvWriter = createObjectCsvWriter({
+        path: filepath,
+        header: [
+          { id: 'timestamp', title: 'Timestamp' },
+          { id: 'deviceId', title: 'Device ID' },
+          { id: 'pg', title: 'PG (W)' },
+          { id: 'pa', title: 'PA (W)' },
+          { id: 'pp', title: 'PP (W)' },
+          { id: 'pag', title: 'PAG Efficiency (%)' },
+          { id: 'ppg', title: 'PPG Efficiency (%)' }
+        ]
+      });
+
+      // 3. 寫入數據
+      await csvWriter.writeRecords(data);
+
+      this.logger.info(`CSV exported: ${filename}`);
+      return filepath;
+
+    } catch (error) {
+      this.logger.error('Failed to export CSV:', error);
+      throw new AppError(500, 'Failed to export CSV');
+    }
+  }
+}
+```
+
+### 前端圖像檢視器 Composable
+
+```typescript
+// frontend/src/composables/useImageViewer.ts
+
+import { ref } from 'vue';
+import { api as viewerApi } from 'v-viewer';
+import type { ImageData } from '@/types/image.types';
+
+export function useImageViewer() {
+  const images = ref<ImageData[]>([]);
+  const currentIndex = ref(0);
+
+  /**
+   * 開啟圖像檢視器
+   */
+  function showImage(imageList: ImageData[], index: number = 0) {
+    images.value = imageList;
+    currentIndex.value = index;
+
+    const imageUrls = imageList.map(img => ({
+      url: img.rgbImagePath,
+      title: `${img.deviceId} - ${new Date(img.capturedAt).toLocaleString()}`
+    }));
+
+    viewerApi({
+      images: imageUrls.map(img => img.url),
+      options: {
+        initialViewIndex: index,
+        toolbar: true,
+        navbar: true,
+        title: true,
+        keyboard: true,
+        zoomRatio: 0.2
+      }
+    });
+  }
+
+  /**
+   * 比較 RGB 與熱影像
+   */
+  function compareImages(image: ImageData) {
+    const imageUrls = [
+      { url: image.rgbImagePath, title: 'RGB Image' },
+      { url: image.thermalImagePath, title: 'Thermal Image' }
+    ];
+
+    viewerApi({
+      images: imageUrls.map(img => img.url),
+      options: {
+        toolbar: true,
+        navbar: true,
+        title: true
+      }
+    });
+  }
+
+  return {
+    images,
+    currentIndex,
+    showImage,
+    compareImages
+  };
+}
+```
+
+### 前端 CSV 匯出 Composable
+
+```typescript
+// frontend/src/composables/useCsvExport.ts
+
+import { ref } from 'vue';
+import { saveAs } from 'file-saver';
+import Papa from 'papaparse';
+import type { PowerData } from '@/types/power.types';
+
+export function useCsvExport() {
+  const exporting = ref(false);
+  const error = ref<string | null>(null);
+
+  /**
+   * 匯出功率數據為 CSV
+   */
+  function exportPowerData(data: PowerData[], filename: string = 'power_data.csv') {
+    exporting.value = true;
+    error.value = null;
+
+    try {
+      // 1. 準備數據
+      const exportData = data.map(item => ({
+        'Timestamp': new Date(item.timestamp).toLocaleString(),
+        'Device ID': item.deviceId,
+        'PG (W)': item.pg,
+        'PA (W)': item.pa,
+        'PP (W)': item.pp,
+        'PAG Efficiency (%)': item.pagEfficiency?.toFixed(2) || 'N/A',
+        'PPG Efficiency (%)': item.ppgEfficiency?.toFixed(2) || 'N/A'
+      }));
+
+      // 2. 轉換為 CSV
+      const csv = Papa.unparse(exportData);
+
+      // 3. 下載檔案
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      saveAs(blob, filename);
+
+      console.log(`CSV exported: ${filename}`);
+
+    } catch (err: any) {
+      error.value = err.message || 'Failed to export CSV';
+      console.error('CSV export error:', err);
+    } finally {
+      exporting.value = false;
+    }
+  }
+
+  return {
+    exporting,
+    error,
+    exportPowerData
+  };
+}
 ```
 
 ---
