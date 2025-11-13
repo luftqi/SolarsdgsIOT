@@ -106,26 +106,29 @@ export class GpsLocationRepository {
    * @param deviceId 設備 ID
    * @param startTime 開始時間
    * @param endTime 結束時間
+   * @param limit 最多返回數量
    * @returns GPS 位置記錄陣列
    */
   async getGpsTrack(
     deviceId: string,
     startTime: Date,
-    endTime: Date
+    endTime: Date,
+    limit: number = 100
   ): Promise<GpsLocationRecord[]> {
     const query = `
       SELECT * FROM gps_locations
       WHERE device_id = $1
       AND timestamp BETWEEN $2 AND $3
-      ORDER BY timestamp ASC;
+      ORDER BY timestamp ASC
+      LIMIT $4;
     `;
 
     this.logger.info(
-      `查詢 GPS 軌跡: ${deviceId} (${startTime.toISOString()} ~ ${endTime.toISOString()})`
+      `查詢 GPS 軌跡: ${deviceId} (${startTime.toISOString()} ~ ${endTime.toISOString()}) limit ${limit}`
     );
 
     try {
-      const result: QueryResult = await this.pool.query(query, [deviceId, startTime, endTime]);
+      const result: QueryResult = await this.pool.query(query, [deviceId, startTime, endTime, limit]);
       return result.rows;
     } catch (error: any) {
       this.logger.error(`查詢 GPS 軌跡失敗: ${error.message}`, error);

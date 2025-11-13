@@ -241,4 +241,35 @@ export class PowerDataRepository {
       throw error;
     }
   }
+
+  /**
+   * 獲取所有設備的最新功率數據
+   * @returns 所有設備的最新數據
+   */
+  async getAllDevicesLatest(): Promise<PowerDataRecord[]> {
+    const query = `
+      SELECT DISTINCT ON (device_id)
+        id,
+        device_id,
+        timestamp,
+        pg,
+        pa,
+        pp,
+        pga_efficiency,
+        pgp_efficiency,
+        created_at
+      FROM power_data
+      ORDER BY device_id, timestamp DESC;
+    `;
+
+    this.logger.info('查詢所有設備的最新功率數據');
+
+    try {
+      const result: QueryResult = await this.pool.query(query);
+      return result.rows;
+    } catch (error: any) {
+      this.logger.error(`查詢所有設備最新數據失敗: ${error.message}`, error);
+      throw error;
+    }
+  }
 }
