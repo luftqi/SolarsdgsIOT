@@ -1,0 +1,110 @@
+# 全域選項
+{
+	email wg.444.444.444@gmail.com
+}
+
+# 主 PWA 應用 - Vue 3 Dashboard
+solarsdgs.online, www.solarsdgs.online {
+	reverse_proxy frontend:80
+
+	# PWA 必要標頭
+	header {
+		# 安全標頭
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy strict-origin-when-cross-origin
+		Content-Security-Policy "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob: wss:"
+
+		# PWA 支援
+		Service-Worker-Allowed /
+
+		# CORS
+		Access-Control-Allow-Origin *
+		Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+		Access-Control-Allow-Headers "Content-Type, Authorization"
+	}
+
+	# Service Worker 不快取
+	@sw {
+		path /service-worker.js
+		path /sw.js
+		path /manifest.json
+		path /manifest.webmanifest
+	}
+	header @sw Cache-Control "no-cache, no-store, must-revalidate"
+
+	# PWA 圖標檔案
+	@pwa_icons {
+		path /pwa-*.png
+		path /favicon.ico
+		path /apple-touch-icon.png
+	}
+	header @pwa_icons Cache-Control "public, max-age=3600"
+
+	# 靜態資源快取
+	@static {
+		path *.css *.js *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2 *.ttf
+		not path /service-worker.js
+		not path /sw.js
+	}
+	header @static Cache-Control "public, max-age=31536000, immutable"
+
+	encode gzip
+
+	log {
+		output file /data/solar_access.log
+		format console
+	}
+}
+
+# API 端點 - Backend API + WebSocket
+api.solarsdgs.online {
+	reverse_proxy backend:3000
+
+	# WebSocket 支援
+	@websocket {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	reverse_proxy @websocket backend:3000
+
+	# API CORS 設定
+	header {
+		Access-Control-Allow-Origin *
+		Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, DELETE, PATCH"
+		Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, X-API-Key"
+		Access-Control-Max-Age "3600"
+		Access-Control-Allow-Credentials "true"
+
+		# API 版本資訊
+		X-API-Version "1.0"
+	}
+
+	encode gzip
+
+	log {
+		output file /data/api_access.log
+		format json
+	}
+}
+
+# MQTT WebSocket
+mqtt.solarsdgs.online {
+	reverse_proxy mqtt:9001
+
+	@websocket {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	reverse_proxy @websocket mqtt:9001
+
+	header {
+		Access-Control-Allow-Origin *
+	}
+
+	log {
+		output file /data/mqtt_access.log
+		format console
+	}
+}

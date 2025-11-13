@@ -1,0 +1,242 @@
+
+# 全域選項
+{
+	email wg.444.444.444@gmail.com
+}
+
+# 主網域 - 暫時顯示提示頁面
+alwaysbefound.com, www.alwaysbefound.com {
+	respond "Welcome to Always Be Found - PWA App: https://app.alwaysbefound.com" 200
+	# 或者可以重導向到 PWA
+	# redir https://app.alwaysbefound.com{uri} permanent
+}
+
+# PWA 應用 - 主要應用程式
+app.alwaysbefound.com {
+	reverse_proxy nodered:1880
+
+	# WebSocket 支援
+	@websocket {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	reverse_proxy @websocket nodered:1880
+
+	# PWA 必要標頭
+	header {
+		# 安全標頭
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy strict-origin-when-cross-origin
+
+		# PWA 支援
+		Service-Worker-Allowed /
+
+		# CORS
+		Access-Control-Allow-Origin *
+		Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+		Access-Control-Allow-Headers "Content-Type, Authorization"
+	}
+
+	# Service Worker 不快取
+	@sw {
+		path /service-worker.js
+		path /sw.js
+	}
+	header @sw Cache-Control "no-cache, no-store, must-revalidate"
+
+	# 靜態資源快取
+	@static {
+		path *.css *.js *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
+		not path /service-worker.js
+		not path /sw.js
+	}
+	header @static Cache-Control "public, max-age=31536000, immutable"
+
+	encode gzip
+}
+
+# Node-RED 編輯器 - 開發介面
+nodered.alwaysbefound.com {
+	reverse_proxy nodered:1880
+
+	@websocket {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	reverse_proxy @websocket nodered:1880
+
+	# 修正 MIME types
+	@jsfiles {
+		path *.js *.mjs
+	}
+	header @jsfiles Content-Type "application/javascript"
+
+	@cssfiles {
+		path *.css
+	}
+	header @cssfiles Content-Type "text/css"
+
+	# 不要快取 dashboard 資源
+	@dashboard {
+		path /dashboard/*
+	}
+	header @dashboard Cache-Control "no-cache, no-store, must-revalidate"
+
+	# 可選：加入基本認證保護編輯器
+	# basicauth {
+	#     admin $2a$14$Zkx19XxYLqq...  # 使用 caddy hash-password 生成
+	# }
+
+	encode gzip
+}
+
+# API 端點
+api.alwaysbefound.com {
+	reverse_proxy nodered:1880
+
+	header {
+		Access-Control-Allow-Origin *
+		Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, DELETE"
+		Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+		Access-Control-Max-Age "3600"
+		-X-Frame-Options
+	}
+
+	encode gzip
+}
+
+# Dashboard UI
+dashboard.alwaysbefound.com {
+	reverse_proxy nodered:1880/ui
+
+	@websocket {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	reverse_proxy @websocket nodered:1880
+
+	encode gzip
+}
+
+# MQTT WebSocket
+mqtt.alwaysbefound.com {
+	reverse_proxy mqtt:9001
+
+	@websocket {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	reverse_proxy @websocket mqtt:9001
+}
+
+# IoT 服務端點
+iot.alwaysbefound.com {
+	reverse_proxy nodered:1880
+
+	header {
+		Access-Control-Allow-Origin *
+		Access-Control-Allow-Methods "GET, POST, OPTIONS"
+		Access-Control-Allow-Headers "Content-Type"
+	}
+}
+
+# Solar Dashboard - 太陽能板監控（主要 Dashboard）
+# ⚠️ 修正版本：PWA 檔案繞過認證
+solar.alwaysbefound.com {
+	# ⭐⭐⭐ 關鍵修正：PWA 必要檔案直接處理，繞過 Node-RED 認證
+	# 這些 handle 區塊必須放在最前面，優先處理
+
+	# Manifest 檔案（JSON 格式）
+	handle /dashboard/manifest.json {
+		reverse_proxy solar-nodered:1880
+		header {
+			Cache-Control "public, max-age=3600"
+			Content-Type "application/json"
+			Access-Control-Allow-Origin *
+		}
+	}
+
+	# Manifest 檔案（WebManifest 格式）
+	handle /dashboard/manifest.webmanifest {
+		reverse_proxy solar-nodered:1880
+		header {
+			Cache-Control "public, max-age=3600"
+			Content-Type "application/manifest+json"
+			Access-Control-Allow-Origin *
+		}
+	}
+
+	# PWA 圖標檔案（新上傳的 Logo）
+	handle /dashboard/pwa-*.png {
+		reverse_proxy solar-nodered:1880
+		header {
+			Cache-Control "public, max-age=3600"
+			Access-Control-Allow-Origin *
+		}
+	}
+
+	# Favicon 和其他圖標
+	handle /dashboard/*.ico {
+		reverse_proxy solar-nodered:1880
+		header Cache-Control "public, max-age=3600"
+	}
+
+	handle /dashboard/apple-touch-icon.png {
+		reverse_proxy solar-nodered:1880
+		header Cache-Control "public, max-age=3600"
+	}
+
+	# ⭐ Service Worker（必須不快取）
+	handle /service-worker.js {
+		reverse_proxy solar-nodered:1880
+		header Cache-Control "no-cache, no-store, must-revalidate"
+	}
+
+	handle /sw.js {
+		reverse_proxy solar-nodered:1880
+		header Cache-Control "no-cache, no-store, must-revalidate"
+	}
+
+	# ⭐ 其他所有請求正常處理（包含 Node-RED 的認證機制）
+	handle {
+		reverse_proxy solar-nodered:1880
+
+		# WebSocket 支援
+		@websocket {
+			header Connection *Upgrade*
+			header Upgrade websocket
+		}
+		reverse_proxy @websocket solar-nodered:1880
+
+		# PWA 必要標頭
+		header {
+			X-Content-Type-Options nosniff
+			X-Frame-Options SAMEORIGIN
+			X-XSS-Protection "1; mode=block"
+			Referrer-Policy strict-origin-when-cross-origin
+			Content-Security-Policy "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob: wss:"
+			Service-Worker-Allowed /
+			Access-Control-Allow-Origin *
+			Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+			Access-Control-Allow-Headers "Content-Type, Authorization"
+		}
+
+		# 靜態資源快取
+		@static {
+			path *.css *.js *.woff *.woff2 *.ttf
+			not path /service-worker.js
+			not path /sw.js
+		}
+		header @static Cache-Control "public, max-age=31536000, immutable"
+
+		encode gzip
+	}
+
+	# 日誌記錄
+	log {
+		output file /data/solar_access.log
+		format console
+	}
+}

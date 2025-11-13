@@ -12,16 +12,46 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
 [![Status](https://img.shields.io/badge/Phase%201-✅%20Complete-success)](./IMPLEMENTATION_PHASE1_COMPLETE.md)
 
+## 🚀 Quick Start (Docker 部署)
+
+```bash
+# 1. Clone 專案
+git clone <repository-url>
+cd solarsdgs-iot
+
+# 2. 配置環境變數
+cd docker
+cp .env.example .env
+# 編輯 .env 設置資料庫密碼等
+
+# 3. 啟動所有服務 (Caddy + PostgreSQL + MQTT + Backend + Frontend)
+docker compose up -d
+
+# 4. 檢查服務狀態
+docker compose ps
+docker compose logs -f
+
+# 5. 訪問應用
+# - Frontend: https://solarsdgs.online
+# - API: https://api.solarsdgs.online
+# - MQTT WebSocket: wss://mqtt.solarsdgs.online
+```
+
+**需求**: Docker 24+ | Docker Compose 2.20+ | DNS 已設定指向 VPS IP
+
+📖 **完整部署指南**: [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md)
+
+---
+
 ## 🎉 Phase 1 完成！
 
 ✅ **後端核心已完成** - MQTT 數據接收、解析、儲存全部運作正常
 ✅ **資料庫已建立** - PostgreSQL 完整 Schema 並在 VPS 上運行
 ✅ **IoT 模擬器完成** - 完整模擬太陽能發電與 GPS 數據
 ✅ **測試 100% 通過** - 50+ 條數據成功寫入，無錯誤
+✅ **Docker 配置完成** - Caddy + 所有服務容器化
 
 📄 **詳細報告**: [Phase 1 完成報告](./IMPLEMENTATION_PHASE1_COMPLETE.md) | [測試結果](./TEST_RESULTS_SUCCESS.md)
-
-**Phase 2 即將開始**: Express API + WebSocket + Vue Dashboard (預計 3-4 週)
 
 ---
 
@@ -70,7 +100,28 @@ SolarSDGs IoT 是一個完整的太陽能發電監控系統，專為商業化多
 
 ---
 
-## 🏗️ 系統架構
+## 🏗️ 系統架構 (Docker Compose)
+
+```
+[用戶瀏覽器] --HTTPS--> [Caddy Reverse Proxy] (自動 SSL)
+                              │
+            ┌─────────────────┼─────────────────┐
+            │                 │                 │
+    solarsdgs.online   api.solarsdgs.online   mqtt.solarsdgs.online
+            │                 │                 │
+            ▼                 ▼                 ▼
+    [Frontend Container] [Backend Container] [MQTT Container]
+       (Vue 3 PWA)     (Node.js + Express)  (Mosquitto)
+       (Nginx serve)   (WebSocket)          (TCP 1883 + WS 9001)
+                              │
+                              ▼
+                      [PostgreSQL Container]
+                       (PostgreSQL 16)
+
+所有服務通過 Docker Compose 編排，一鍵啟動
+```
+
+### 技術棧
 
 ```
 ┌─────────────────────────────────────────────────────────┐

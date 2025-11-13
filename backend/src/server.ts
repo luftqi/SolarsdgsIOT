@@ -6,22 +6,29 @@
 // - Database connection
 // - MQTT service
 // - Express API server
-// - WebSocket server (future)
+// - WebSocket server
 // =================================================================
 
+// ⚠️ CRITICAL: 必須在所有 import 之前載入環境變數
+// 因為某些模組在導入時可能會立即讀取 process.env
 import * as dotenv from 'dotenv';
+import * as path from 'path';
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+// 現在可以安全地導入其他模組
 import { Logger } from './utils/logger';
 import { DatabaseService } from './services/database/DatabaseService';
 import { PowerDataRepository } from './services/database/PowerDataRepository';
 import { GpsLocationRepository } from './services/database/GpsLocationRepository';
 import { MqttService } from './services/mqtt/MqttService';
+import { WebSocketService } from './services/realtime/WebSocketService';
 import { createApp } from './app';
 import type { Server as HttpServer } from 'http';
 
-// 載入環境變數
-dotenv.config();
-
 const logger = new Logger('Server');
+
+// 調試：確認環境變數已載入
+logger.info(`Environment loaded - DB_HOST: ${process.env.DB_HOST || 'NOT SET'}`);
 
 /**
  * 主啟動函數
@@ -68,9 +75,16 @@ async function main() {
       logger.info(`Express API server listening on port ${PORT}`);
     });
 
-    // === 6. TODO: 初始化 WebSocket 服務器 ===
-    // const wsService = new WebSocketService(httpServer);
-    // wsService.start();
+    // === 6. 初始化 WebSocket 服務器 ===
+    logger.info('Step 6: Starting WebSocket server...');
+    const wsService = new WebSocketService(httpServer);
+
+    // === 7. 整合 MQTT → WebSocket 即時推送 ===
+    logger.info('Step 7: Integrating MQTT with WebSocket...');
+    mqttService.on('powerDataParsed', (data) => {
+      // 廣播即時數據到 WebSocket
+      wsService.broadcastRealtimeData(data.deviceId, data, true);
+    });
 
     logger.info('========================================');
     logger.info('✅ SolarSDGs IoT Backend Started Successfully');
@@ -79,7 +93,7 @@ async function main() {
     logger.info(`  - PostgreSQL: Connected (${process.env.DB_NAME})`);
     logger.info(`  - MQTT: Connected (${process.env.MQTT_BROKER_URL})`);
     logger.info(`  - Express API: http://localhost:${PORT}`);
-    logger.info('  - WebSocket: TODO (Phase 2.2)');
+    logger.info(`  - WebSocket: ws://localhost:${PORT} (Socket.io)`);
     logger.info('========================================');
     logger.info('Available endpoints:');
     logger.info(`  - http://localhost:${PORT}/api/health`);
@@ -89,7 +103,7 @@ async function main() {
     logger.info('========================================');
 
     // 處理優雅關閉
-    setupGracefulShutdown(dbService, mqttService, httpServer);
+    setupGracefulShutdown(dbService, mqttService, wsService, httpServer);
 
   } catch (error: any) {
     logger.error('Failed to start server', error);
@@ -103,12 +117,17 @@ async function main() {
 function setupGracefulShutdown(
   dbService: DatabaseService,
   mqttService: MqttService,
+  wsService: WebSocketService,
   httpServer?: HttpServer
 ) {
   const shutdown = async (signal: string) => {
     logger.info(`\n${signal} received. Shutting down gracefully...`);
 
     try {
+      // 關閉 WebSocket 服務器
+      logger.info('Closing WebSocket server...');
+      await wsService.close();
+
       // 關閉 HTTP 服務器 (停止接受新請求)
       if (httpServer) {
         logger.info('Closing HTTP server...');

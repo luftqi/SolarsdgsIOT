@@ -1,132 +1,144 @@
--- SolarSDGs IoT Database Initialization Script
--- PostgreSQL 16
+-- =================================================================
+-- SolarSDGs IoT - PostgreSQL Initial Schema
+-- Docker 部署專用
+-- =================================================================
 
--- Create Extensions
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pg_trgm";
-
--- Create Tables
-
--- 1. Devices Table
-CREATE TABLE IF NOT EXISTS devices (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    device_id VARCHAR(50) UNIQUE NOT NULL,
-    name VARCHAR(100) NOT NULL,
-    location VARCHAR(200),
-    status VARCHAR(20) DEFAULT 'active',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- 2. Power Data Table
+-- === 1. 功率數據表 (Power Data) ===
 CREATE TABLE IF NOT EXISTS power_data (
-    id BIGSERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     device_id VARCHAR(50) NOT NULL,
-    timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
-    pg DECIMAL(10, 2) NOT NULL,  -- Grid Power
-    pa DECIMAL(10, 2) NOT NULL,  -- AC Power
-    pp DECIMAL(10, 2) NOT NULL,  -- Panel Power
-    pag DECIMAL(10, 2),          -- AC-Grid Efficiency %
-    ppg DECIMAL(10, 2),          -- Panel-Grid Efficiency %
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_device FOREIGN KEY (device_id)
-        REFERENCES devices(device_id) ON DELETE CASCADE
+    timestamp TIMESTAMP NOT NULL,
+    pg INTEGER NOT NULL,                    -- 發電功率 (Generation Power) in Watts
+    pa INTEGER NOT NULL,                    -- 負載 A 功率 (Load A Power) in Watts
+    pp INTEGER NOT NULL,                    -- 負載 P 功率 (Load P Power) in Watts
+    pga_efficiency DECIMAL(5,2),            -- 負載 A 效率 (PAG) in %
+    pgp_efficiency DECIMAL(5,2),            -- 負載 P 效率 (PPG) in %
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    -- 唯一約束：同一設備同一時間只能有一條記錄
+    CONSTRAINT unique_device_timestamp UNIQUE (device_id, timestamp)
 );
 
--- 3. GPS Locations Table
+-- 索引優化
+CREATE INDEX idx_power_data_device_id ON power_data(device_id);
+CREATE INDEX idx_power_data_timestamp ON power_data(timestamp);
+CREATE INDEX idx_power_data_device_timestamp ON power_data(device_id, timestamp DESC);
+
+-- === 2. GPS 位置表 (GPS Locations) ===
 CREATE TABLE IF NOT EXISTS gps_locations (
-    id BIGSERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     device_id VARCHAR(50) NOT NULL,
-    timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
-    latitude DECIMAL(10, 8) NOT NULL,
-    longitude DECIMAL(11, 8) NOT NULL,
-    altitude DECIMAL(10, 2),
-    speed DECIMAL(10, 2),
-    satellites INTEGER,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_device_gps FOREIGN KEY (device_id)
-        REFERENCES devices(device_id) ON DELETE CASCADE
+    latitude DECIMAL(10,8) NOT NULL,        -- 緯度 (-90 ~ 90)
+    longitude DECIMAL(11,8) NOT NULL,       -- 經度 (-180 ~ 180)
+    altitude DECIMAL(8,2) DEFAULT 0,        -- 高度 (公尺)
+    satellites INTEGER DEFAULT 0,           -- 衛星數量
+    timestamp TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    -- 唯一約束：同一設備同一時間只能有一條位置記錄
+    CONSTRAINT unique_gps_device_timestamp UNIQUE (device_id, timestamp)
 );
 
--- 4. Device Configurations Table
-CREATE TABLE IF NOT EXISTS device_configs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+-- 索引優化
+CREATE INDEX idx_gps_device_id ON gps_locations(device_id);
+CREATE INDEX idx_gps_timestamp ON gps_locations(timestamp);
+CREATE INDEX idx_gps_device_timestamp ON gps_locations(device_id, timestamp DESC);
+
+-- === 3. 設備表 (Devices) ===
+CREATE TABLE IF NOT EXISTS devices (
+    id SERIAL PRIMARY KEY,
     device_id VARCHAR(50) UNIQUE NOT NULL,
-    config_data JSONB NOT NULL,
-    version INTEGER DEFAULT 1,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_device_config FOREIGN KEY (device_id)
-        REFERENCES devices(device_id) ON DELETE CASCADE
+    device_name VARCHAR(100),
+    device_type VARCHAR(50) DEFAULT 'solar',
+    status VARCHAR(20) DEFAULT 'offline',   -- online, offline, error
+    last_seen TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 5. Users Table (for authentication)
+-- 索引優化
+CREATE INDEX idx_devices_device_id ON devices(device_id);
+CREATE INDEX idx_devices_status ON devices(status);
+
+-- === 4. 設備配置表 (Device Configuration) ===
+CREATE TABLE IF NOT EXISTS device_config (
+    id SERIAL PRIMARY KEY,
+    device_id VARCHAR(50) UNIQUE NOT NULL,
+    factor_a DECIMAL(5,2) DEFAULT 1.0,      -- PA 修正係數
+    factor_p DECIMAL(5,2) DEFAULT 1.0,      -- PP 修正係數
+    pizero2_on INTEGER DEFAULT 0,           -- Pi Zero 2W 開機時間
+    pizero2_off INTEGER DEFAULT 0,          -- Pi Zero 2W 關機時間
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    -- 外鍵約束
+    CONSTRAINT fk_device_config_device
+        FOREIGN KEY (device_id)
+        REFERENCES devices(device_id)
+        ON DELETE CASCADE
+);
+
+-- === 5. 圖像表 (Images) ===
+CREATE TABLE IF NOT EXISTS images (
+    id SERIAL PRIMARY KEY,
+    device_id VARCHAR(50) NOT NULL,
+    image_type VARCHAR(20) NOT NULL,        -- 'rgb' or 'thermal'
+    file_path VARCHAR(255) NOT NULL,        -- 圖像檔案路徑
+    thumbnail_path VARCHAR(255),            -- 縮圖路徑
+    file_size INTEGER,                      -- 檔案大小 (bytes)
+    width INTEGER,                          -- 圖像寬度
+    height INTEGER,                         -- 圖像高度
+    timestamp TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    -- 外鍵約束
+    CONSTRAINT fk_images_device
+        FOREIGN KEY (device_id)
+        REFERENCES devices(device_id)
+        ON DELETE CASCADE
+);
+
+-- 索引優化
+CREATE INDEX idx_images_device_id ON images(device_id);
+CREATE INDEX idx_images_timestamp ON images(timestamp);
+CREATE INDEX idx_images_type ON images(image_type);
+
+-- === 6. 用戶表 (Users) ===
 CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
-    role VARCHAR(20) DEFAULT 'user',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    email VARCHAR(100) UNIQUE,
+    role VARCHAR(20) DEFAULT 'user',        -- admin, user, viewer
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create Indexes for Performance
+-- 索引優化
+CREATE INDEX idx_users_username ON users(username);
+CREATE INDEX idx_users_email ON users(email);
 
--- Power Data Indexes
-CREATE INDEX IF NOT EXISTS idx_power_data_device_id ON power_data(device_id);
-CREATE INDEX IF NOT EXISTS idx_power_data_timestamp ON power_data(timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_power_data_device_timestamp ON power_data(device_id, timestamp DESC);
-
--- GPS Locations Indexes
-CREATE INDEX IF NOT EXISTS idx_gps_device_id ON gps_locations(device_id);
-CREATE INDEX IF NOT EXISTS idx_gps_timestamp ON gps_locations(timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_gps_device_timestamp ON gps_locations(device_id, timestamp DESC);
-
--- Device Indexes
-CREATE INDEX IF NOT EXISTS idx_devices_status ON devices(status);
-
--- Create Functions
-
--- Update timestamp trigger function
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
--- Create Triggers
-
--- Update triggers for updated_at columns
-CREATE TRIGGER update_devices_updated_at BEFORE UPDATE ON devices
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_device_configs_updated_at BEFORE UPDATE ON device_configs
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- Insert Sample Data (Optional - for development)
-
--- Sample Device
-INSERT INTO devices (device_id, name, location, status)
-VALUES ('6001', 'Solar Panel 6001', 'Main Building Roof', 'active')
+-- === 7. 創建默認設備 ===
+INSERT INTO devices (device_id, device_name, device_type, status)
+VALUES
+    ('6001', 'Solar Device 6001', 'solar', 'offline'),
+    ('6002', 'Solar Device 6002', 'solar', 'offline')
 ON CONFLICT (device_id) DO NOTHING;
 
--- Sample Admin User (password: admin123 - CHANGE IN PRODUCTION!)
--- Password hash is bcrypt hash of 'admin123'
-INSERT INTO users (username, email, password_hash, role)
-VALUES ('admin', 'admin@solarsdgs.com', '$2b$10$rKvVPqQzK0YMxH5bXGxQp.XJ9K0pZ0vZ0vZ0vZ0vZ0vZ0vZ0vZ0vZ', 'admin')
+-- === 8. 創建默認配置 ===
+INSERT INTO device_config (device_id, factor_a, factor_p)
+VALUES
+    ('6001', 1.0, 1.0),
+    ('6002', 1.0, 1.0)
+ON CONFLICT (device_id) DO NOTHING;
+
+-- === 9. 創建默認管理員用戶 ===
+-- 密碼: admin123 (需要在應用層進行 bcrypt hash)
+INSERT INTO users (username, password_hash, email, role)
+VALUES
+    ('admin', '$2a$10$placeholder_hash', 'admin@solarsdgs.com', 'admin')
 ON CONFLICT (username) DO NOTHING;
 
--- Grant Permissions (if needed)
--- GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO your_user;
--- GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO your_user;
-
-COMMENT ON TABLE devices IS 'IoT devices (Raspberry Pi Pico W)';
-COMMENT ON TABLE power_data IS 'Power generation data (PG, PA, PP)';
-COMMENT ON TABLE gps_locations IS 'GPS location tracking data';
-COMMENT ON TABLE device_configs IS 'Device configuration settings';
-COMMENT ON TABLE users IS 'System users for authentication';
+-- =================================================================
+-- 完成
+-- =================================================================

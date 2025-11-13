@@ -86,3 +86,17 @@ test-mcp-simple.js
 diagnose-mcp.js
 nul
 
+# Deployment tar files
+*.tar.gz
+backend-deploy*.tar.gz
+
+# Extracted temporary files
+extracted_*.js
+
+# Caddy SSL certificates and data
+docker/caddy/data/
+docker/caddy/config/
+
+# Docker build artifacts
+.dockerignore
+

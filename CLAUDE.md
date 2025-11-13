@@ -7,6 +7,56 @@
 
 ## 🚨 最高優先級規則 (CRITICAL)
 
+### 🎯 部署環境規則 (DEPLOYMENT ENVIRONMENT)
+
+**重要性**: ⭐⭐⭐⭐⭐
+
+**核心原則**: 我們只在 VPS 上部署和測試，不使用本地開發環境
+
+1. **❌ 絕對禁止**: 創建本地測試服務器或本地版本
+2. **❌ 絕對禁止**: 創建「臨時解決方案」或「繞過方案」
+3. **❌ 絕對禁止**: 在遇到 VPS 問題時自動改用本地測試
+4. **✅ 必須做**: 所有開發和測試都在 VPS (72.61.117.219) 上進行
+5. **✅ 必須做**: 遇到 VPS 連線或配置問題時，停止並報告問題
+6. **✅ 必須做**: 提供解決 VPS 問題的方案，等待用戶同意後執行
+
+**VPS 資訊**:
+- IP: 72.61.117.219
+- Hostname: srv1122961.hstgr.cloud
+- OS: Ubuntu 24.04 LTS
+- Deployment: **Docker Compose** (所有服務容器化)
+- Services: Caddy, PostgreSQL, Mosquitto MQTT, Backend (Node.js), Frontend (Vue 3)
+
+**域名架構**:
+- `solarsdgs.online` → Vue 3 PWA Dashboard
+- `api.solarsdgs.online` → Backend API + WebSocket
+- `mqtt.solarsdgs.online` → MQTT WebSocket (port 9001)
+
+**正確流程**:
+```
+遇到 VPS 問題 → 停止操作 → 分析問題原因 → 提供 2-3 個解決方案 → 等待用戶選擇 → 執行修復
+```
+
+**錯誤示範**:
+```
+❌ "VPS 資料庫連不上，讓我創建一個本地測試版本..."
+❌ "我們先在本地測試，之後再部署到 VPS..."
+❌ "為了方便測試，我創建了一個臨時的本地服務器..."
+```
+
+**正確示範**:
+```
+✅ "VPS PostgreSQL 認證失敗，問題是 scram-sha-256 vs md5。
+   解決方案:
+   1. 修改 pg_hba.conf 改用 md5
+   2. 重新設置 admin 用戶密碼為 scram-sha-256 格式
+   3. 使用 postgres 超級用戶連接
+
+   請選擇要使用哪個方案?"
+```
+
+---
+
 ### ⛔ 禁止自動回滾 (NEVER ROLLBACK)
 
 **重要性**: ⭐⭐⭐⭐⭐
@@ -66,9 +116,192 @@ Claude Code 在創建新文件或腳本時:
 
 ---
 
+### ⚠️ Node.js 環境變數載入順序 (CRITICAL LESSON LEARNED)
+
+**重要性**: ⭐⭐⭐⭐⭐
+
+**日期**: 2025-11-13 | **Phase 2.2 部署時發現的關鍵問題**
+
+#### 問題描述
+
+在 VPS 部署時發現 `.env` 文件中的 `DB_HOST=72.61.117.219` 沒有被正確載入，`DatabaseService` 仍然使用默認值 `localhost`。
+
+#### 根本原因
+
+**TypeScript/JavaScript 的 `import` 語句是同步執行的**，所有 `import` 會在任何其他模組層級代碼之前完成。
+
+錯誤的代碼順序：
+```typescript
+// ❌ 錯誤：import 先執行，dotenv.config() 後執行
+import { createApp } from './app';        // 觸發所有模組的導入
+import { DatabaseService } from './services/database/DatabaseService';
+dotenv.config();                          // 但這時才載入環境變數
+```
+
+當 `createApp` 被導入時：
+1. 連鎖觸發 `app.ts` 的導入
+2. `app.ts` 導入所有 route 模組
+3. Route 模組導入 `DatabaseService`
+4. `DatabaseService` 的 constructor 在**模組導入階段**就可能被執行
+5. 此時 `process.env.DB_HOST` 還是 `undefined`，使用默認值 `localhost`
+
+#### 正確解決方案
+
+**✅ 將 `dotenv.config()` 放在所有 `import` 之前**：
+
+```typescript
+// ✅ 正確：dotenv 先載入，再 import 其他模組
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// ⚠️ CRITICAL: 必須在所有 import 之前載入環境變數
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+// 現在可以安全地導入其他模組
+import { Logger } from './utils/logger';
+import { DatabaseService } from './services/database/DatabaseService';
+import { createApp } from './app';
+```
+
+#### 為什麼需要明確指定路徑？
+
+`dotenv.config()` 默認從**當前工作目錄**尋找 `.env` 文件。但編譯後的代碼在 `dist/` 目錄執行：
+
+```
+backend/
+├── .env              ← 環境變數文件
+├── dist/
+│   └── server.js     ← 執行位置（__dirname = dist/）
+└── src/
+    └── server.ts
+```
+
+必須使用 `path.resolve(__dirname, '../.env')` 從 `dist/` 向上一層找到 `.env`。
+
+#### 商用環境最佳實踐
+
+1. **✅ 必須做**：
+   - 將 `dotenv.config()` 放在 entry point 的**最頂部**
+   - 明確指定 `.env` 文件路徑
+   - 在載入環境變數後添加驗證日誌
+
+2. **❌ 絕對禁止**：
+   - 將 `dotenv.config()` 放在 import 之後
+   - 依賴默認的 `.env` 路徑查找
+   - 使用臨時的環境變數傳遞（如 `DB_HOST=xxx node server.js`）
+
+3. **最佳實踐範本**：
+
+```typescript
+// server.ts (Entry Point)
+
+// ⚠️ Step 1: 載入環境變數（必須在最頂部）
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+// Step 2: 導入其他模組
+import { Logger } from './utils/logger';
+import { DatabaseService } from './services/database/DatabaseService';
+import { createApp } from './app';
+
+// Step 3: 驗證環境變數（可選但推薦）
+const logger = new Logger('Server');
+logger.info(`Environment loaded - DB_HOST: ${process.env.DB_HOST || 'NOT SET'}`);
+
+// Step 4: 啟動應用
+async function main() {
+  // DatabaseService 現在可以正確讀取 process.env.DB_HOST
+  const dbService = DatabaseService.getInstance();
+  // ...
+}
+```
+
+#### 調試技巧
+
+如果懷疑環境變數載入有問題：
+
+1. **檢查日誌順序**：
+   ```
+   [INFO] [DatabaseService] Database connection pool initialized (localhost:5432)  ← 錯誤
+   [INFO] [Server] Environment loaded - DB_HOST: 72.61.117.219                    ← 太遲了
+   ```
+
+2. **添加調試日誌**：
+   ```typescript
+   dotenv.config({ path: path.resolve(__dirname, '../.env') });
+   console.log('DB_HOST immediately after dotenv:', process.env.DB_HOST);
+   ```
+
+3. **檢查 import 順序**：
+   - 使用 `grep -n "import" server.ts` 檢查所有 import
+   - 確保 `dotenv.config()` 在第一個業務邏輯 import 之前
+
+#### 相關問題排查
+
+如果環境變數仍然無法載入，檢查：
+
+1. **檔案路徑**：
+   ```bash
+   # 在 VPS 上執行
+   cd /root/solarsdgs-iot/backend
+   ls -la .env  # 確認文件存在
+   cat .env     # 確認內容正確
+   ```
+
+2. **檔案權限**：
+   ```bash
+   chmod 600 .env  # 確保可讀取
+   ```
+
+3. **編譯後的代碼**：
+   ```bash
+   grep -A 2 "dotenv.config" dist/server.js
+   # 應該看到: dotenv.config({ path: path.resolve(__dirname, '../.env') });
+   ```
+
+#### 經驗教訓
+
+這個問題花費了**數小時**才找到根本原因，因為：
+- 錯誤訊息具有誤導性（認證失敗 vs 環境變數未載入）
+- 單例模式隱藏了初始化時序問題
+- 日誌順序不明顯（需要仔細對比）
+
+**記住**：在 Node.js 商用環境中，環境變數的載入順序是**首要關鍵**，任何延遲載入都會導致難以調試的問題。
+
+---
+
 ## 🏗️ 核心架構原則
 
-### 1. **分層架構必須嚴格遵守**
+### 1. **Docker Compose 容器化架構**
+
+```
+[用戶瀏覽器]
+    ↓ HTTPS
+[Caddy Reverse Proxy] (自動 SSL)
+    ├─→ solarsdgs.online → [Frontend Container] (Vue 3 PWA)
+    ├─→ api.solarsdgs.online → [Backend Container] (Node.js + Express)
+    └─→ mqtt.solarsdgs.online → [MQTT Container] (Mosquitto WebSocket)
+         ↓
+    [PostgreSQL Container] ← [Backend]
+    [MQTT Container] ← [Backend]
+```
+
+**所有服務必須容器化**:
+- ✅ Caddy: Reverse proxy + 自動 HTTPS (Let's Encrypt)
+- ✅ Frontend: Vue 3 PWA (Vite build + Caddy serve)
+- ✅ Backend: Node.js + Express + TypeScript + Socket.io
+- ✅ PostgreSQL: 資料庫 (PostgreSQL 16)
+- ✅ Mosquitto: MQTT Broker (TCP 1883 + WebSocket 9001)
+
+**部署方式**:
+```bash
+# VPS 上執行
+cd docker
+docker compose up -d
+```
+
+### 2. **分層架構必須嚴格遵守**
 
 ```
 Controller (路由層)
@@ -88,7 +321,15 @@ Database (PostgreSQL)
 - ❌ 禁止在 Controller 中寫業務邏輯
 - ❌ 禁止在 Repository 中寫業務邏輯
 
-### 2. **從 Node-RED 到 Node.js 的對應關係**
+### 3. **從 Node-RED 到 Node.js + Vue 3 的遷移策略**
+
+**專案目標**: 將 Node-RED 完整應用遷移到商用化的 Vue 3 + Node.js 技術棧
+- ✅ 保留 100% UI/UX (從 Node-RED Dashboard 2.0 複製外觀)
+- ✅ 保留所有業務邏輯 (從 flows.json 提取並轉換)
+- ✅ 保留 SOLARSDGS 嵌入式 Logo (base64, 11082 字符)
+- ✅ 使用 Docker Compose 容器化部署 (而非 Node-RED 單體應用)
+
+### 4. **從 Node-RED 到 Node.js 的對應關係**
 
 | Node-RED 節點 | Node.js 實現 | 檔案路徑 |
 |--------------|-------------|---------|
@@ -904,11 +1145,55 @@ onMounted(() => {
 2. **端對端測試**
 3. **效能測試**
 
-### Phase 5: 部署上線
+### Phase 5: Docker 部署 ✅ **配置完成**
 
-1. **Docker 配置**
-2. **CI/CD 設置**
-3. **監控與日誌**
+1. **Docker 配置** ✅ **完成**
+   - ✅ `docker-compose.yml` - 完整服務編排
+   - ✅ `docker/caddy/Caddyfile` - Reverse proxy + HTTPS
+   - ✅ `docker/backend/Dockerfile` - Node.js backend 容器
+   - ✅ `docker/frontend/Dockerfile` - Vue 3 PWA 容器 (多階段構建)
+   - ✅ `docker/postgres/init.sql` - 資料庫初始化
+   - ✅ `docker/mqtt/mosquitto.conf` - MQTT broker 配置
+   - ✅ `docker/.env.example` - 環境變數範本
+
+2. **VPS 部署流程**:
+   ```bash
+   # 1. SSH 連接 VPS
+   ssh root@72.61.117.219
+
+   # 2. 上傳專案到 VPS
+   # (使用 git clone 或 scp)
+
+   # 3. 創建 .env 文件
+   cd docker
+   cp .env.example .env
+   # 編輯 .env 設置實際密碼
+
+   # 4. 啟動所有服務
+   docker compose up -d
+
+   # 5. 檢查服務狀態
+   docker compose ps
+   docker compose logs -f
+   ```
+
+3. **DNS 設定** (Hostinger):
+   - `solarsdgs.online` A record → 72.61.117.219
+   - `api.solarsdgs.online` A record → 72.61.117.219
+   - `mqtt.solarsdgs.online` A record → 72.61.117.219
+
+4. **監控與日誌**:
+   ```bash
+   # 查看所有容器日誌
+   docker compose logs -f
+
+   # 查看特定服務
+   docker compose logs -f backend
+   docker compose logs -f caddy
+
+   # 檢查 Caddy HTTPS 憑證
+   docker compose exec caddy caddy list-certificates
+   ```
 
 ---
 

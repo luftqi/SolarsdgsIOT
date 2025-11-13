@@ -7,6 +7,7 @@
 // =================================================================
 
 import * as mqtt from 'mqtt';
+import { EventEmitter } from 'events';
 import { Logger } from '../../utils/logger';
 import { DataParser } from './DataParser';
 import { GpsParser } from './GpsParser';
@@ -14,7 +15,7 @@ import { PowerDataRepository } from '../database/PowerDataRepository';
 import { GpsLocationRepository } from '../database/GpsLocationRepository';
 import type { FactorConfig } from '../../types/power.types';
 
-export class MqttService {
+export class MqttService extends EventEmitter {
   private client: mqtt.MqttClient | null = null;
   private readonly logger = new Logger(MqttService.name);
   private readonly dataParser: DataParser;
@@ -29,6 +30,7 @@ export class MqttService {
     powerDataRepo: PowerDataRepository,
     gpsLocationRepo: GpsLocationRepository
   ) {
+    super(); // 呼叫 EventEmitter 建構子
     this.dataParser = new DataParser();
     this.gpsParser = new GpsParser();
     this.powerDataRepo = powerDataRepo;
@@ -163,14 +165,14 @@ export class MqttService {
         }
       }
 
-      // TODO: 發送到 WebSocket (即時 UI 更新)
-      if (result.uiData) {
-        // await this.webSocketService.broadcast(result.uiData);
+      // 發送事件給 WebSocket 服務 (使用第一筆 sqlData)
+      if (result.sqlData && result.sqlData.length > 0) {
+        this.emit('powerDataParsed', result.sqlData[0]);
       }
 
       // TODO: 發送圖表數據
       if (result.chartData) {
-        // await this.webSocketService.sendChartData(result.chartData);
+        this.emit('chartData', result.chartData);
       }
     } catch (error: any) {
       this.logger.error(`Failed to handle power data for ${deviceId}`, error);

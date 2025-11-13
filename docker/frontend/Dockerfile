@@ -1,5 +1,11 @@
-# Stage 1: Build
-FROM node:18-alpine AS builder
+# =================================================================
+# SolarSDGs IoT - Frontend Dockerfile
+# Vue 3 + Vite + TypeScript PWA
+# Multi-stage build: Vite build → Caddy serve
+# =================================================================
+
+# Stage 1: Build Vue 3 application
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -7,32 +13,70 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci && npm cache clean --force
+RUN npm install && \
+    npm cache clean --force
 
-# Copy source code
-COPY . .
+# Copy source files
+COPY index.html ./
+COPY vite.config.ts ./
+COPY tsconfig.json ./
+COPY tsconfig.node.json ./
+COPY public/ ./public/
+COPY src/ ./src/
+
+# Build arguments for environment variables
+ARG VITE_API_BASE_URL=https://api.solarsdgs.online
+ARG VITE_WS_URL=wss://api.solarsdgs.online
+
+# Set build-time environment variables
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_WS_URL=$VITE_WS_URL
 
 # Build for production
 RUN npm run build
 
-# Stage 2: Production with nginx
-FROM nginx:alpine
+# Stage 2: Serve with Caddy
+FROM caddy:2-alpine
 
-# Copy built files
-COPY --from=builder /app/dist /usr/share/nginx/html
+# Copy built files from builder
+COPY --from=builder /app/dist /usr/share/caddy
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Create Caddyfile for SPA routing
+RUN echo -e "{\n\
+    auto_https off\n\
+}\n\
+\n\
+:80 {\n\
+    root * /usr/share/caddy\n\
+    encode gzip\n\
+    \n\
+    # PWA service worker - no cache\n\
+    @sw {\n\
+        path /service-worker.js\n\
+        path /sw.js\n\
+        path /manifest.json\n\
+        path /manifest.webmanifest\n\
+    }\n\
+    header @sw Cache-Control \"no-cache, no-store, must-revalidate\"\n\
+    \n\
+    # Static assets - long cache\n\
+    @static {\n\
+        path *.css *.js *.png *.jpg *.woff *.woff2\n\
+        not path /service-worker.js\n\
+        not path /sw.js\n\
+    }\n\
+    header @static Cache-Control \"public, max-age=31536000, immutable\"\n\
+    \n\
+    # SPA fallback\n\
+    try_files {path} /index.html\n\
+    file_server\n\
+}" > /etc/caddy/Caddyfile
 
-# Set non-root user
-RUN addgroup -g 1001 -S nginx-group && \
-    adduser -S nginx-user -u 1001 -G nginx-group && \
-    chown -R nginx-user:nginx-group /usr/share/nginx/html
-
+# Expose port 80
 EXPOSE 80
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1
 
-CMD ["nginx", "-g", "daemon off;"]
+# Caddy will start automatically
