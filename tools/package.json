@@ -1,0 +1,33 @@
+{
+  "name": "solarsdgs-iot-simulator",
+  "version": "1.0.0",
+  "description": "IoT Device Simulator for SolarSDGs Project",
+  "main": "iot-simulator.ts",
+  "scripts": {
+    "start": "ts-node iot-simulator.ts",
+    "dev": "ts-node iot-simulator.ts --interval=5",
+    "test": "ts-node iot-simulator.ts --interval=2 --batch=5",
+    "device-6001": "ts-node iot-simulator.ts --device=6001",
+    "device-6002": "ts-node iot-simulator.ts --device=6002",
+    "multi-device": "concurrently \"npm run device-6001\" \"npm run device-6002\""
+  },
+  "keywords": [
+    "iot",
+    "mqtt",
+    "simulator",
+    "solar",
+    "testing"
+  ],
+  "author": "SolarSDGs Team",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "mqtt": "^5.14.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.25",
+    "concurrently": "^8.2.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
