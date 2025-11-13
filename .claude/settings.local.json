@@ -76,7 +76,15 @@
       "Bash(start C:Userswg444solarsdgs-iottoolswebsocket-test-client.html)",
       "Bash(cmd /c \"start C:\\Users\\wg444\\solarsdgs-iot\\tools\\websocket-test-client.html\")",
       "Bash(MQTT_BROKER_URL=mqtt://72.61.117.219:1883 DEVICE_ID=6001 DATA_INTERVAL=3 node:*)",
-      "Bash(git remote remove:*)"
+      "Bash(git remote remove:*)",
+      "Bash(git commit:*)",
+      "Bash(nslookup:*)",
+      "Bash(curl -I https://solarsdgs.online --connect-timeout 10)",
+      "Bash(curl -I http://solarsdgs.online)",
+      "Bash(ssh-add:*)",
+      "Bash(sshpass -p 'GRtY^hg7SdW' ssh -o StrictHostKeyChecking=no root@72.61.117.219 \"mkdir -p ~/.ssh && echo ''ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO5Brkjh+ipEJkNRiwSH6GS5D4ySSyyvOk4u0TM+4Tgd wg.444.444.444@gmail.com'' >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys && echo ''✅ SSH 金鑰配置完成''\")",
+      "Bash(timeout 5 ssh -o BatchMode=yes -o ConnectTimeout=3 root@72.61.117.219 \"echo ''SSH 無密碼連接成功!''\")",
+      "Bash(pkill:*)"
     ],
     "deny": [],
     "ask": []

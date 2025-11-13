@@ -271,6 +271,272 @@ async function main() {
 
 ---
 
+### ⚠️ MQTT Topic 配置一致性 (CRITICAL LESSON LEARNED)
+
+**重要性**: ⭐⭐⭐⭐⭐
+
+**日期**: 2025-11-13 | **Phase 1 部署時發現的關鍵問題**
+
+#### 問題描述
+
+IoT 模擬器正常發送 MQTT 消息，但資料庫完全沒有收到任何記錄。檢查日誌發現 Backend 訂閱的 Topic 與模擬器發送的 Topic 不匹配。
+
+#### 根本原因
+
+**MQTT 的 Topic 必須完全匹配才能接收消息**：
+
+錯誤配置：
+```typescript
+// ❌ IoT Simulator 發送到
+Topic: "SOLARSDGS"
+
+// ❌ Backend MqttService 訂閱
+Topic: "solar/+/data"  // + 是設備 ID 通配符
+Topic: "solar/+/gps"
+
+// 結果：完全不匹配，Backend 收不到任何消息
+```
+
+#### 正確解決方案
+
+**✅ 確保 Publisher 和 Subscriber 的 Topic 一致**：
+
+```typescript
+// ✅ IoT Simulator 發送到
+Topic: "solar/6001/data"  // 6001 是設備 ID
+
+// ✅ Backend MqttService 訂閱
+Topic: "solar/+/data"     // + 匹配任何設備 ID
+
+// 結果：完美匹配，數據正常流動
+```
+
+#### 商用環境最佳實踐
+
+1. **✅ 必須做**：
+   - 在系統設計階段就定義清楚 MQTT Topic 結構
+   - 使用階層式 Topic 命名 (例如: `company/device_type/device_id/data_type`)
+   - 在配置文件中集中管理所有 Topic 定義
+   - 在測試階段使用 MQTT 客戶端工具 (如 MQTT Explorer) 監聽所有 Topic
+
+2. **❌ 絕對禁止**：
+   - 在不同服務中使用不同的 Topic 命名規則
+   - 硬編碼 Topic 字串在程式碼各處
+   - 沒有文檔記錄 Topic 結構
+
+3. **最佳實踐範本**：
+
+```typescript
+// config/mqtt.config.ts - 集中管理 MQTT 配置
+
+export const MQTT_CONFIG = {
+  broker: process.env.MQTT_BROKER_URL || 'mqtt://mqtt:1883',
+  topics: {
+    // 功率數據 Topic 結構
+    powerData: {
+      pattern: 'solar/+/data',           // Backend 訂閱用
+      build: (deviceId: string) => `solar/${deviceId}/data`  // 發送用
+    },
+    // GPS 數據 Topic 結構
+    gpsData: {
+      pattern: 'solar/+/gps',
+      build: (deviceId: string) => `solar/${deviceId}/gps`
+    },
+    // 設備控制 Topic 結構
+    deviceControl: {
+      pattern: 'solar/+/control',
+      build: (deviceId: string) => `solar/${deviceId}/control`
+    }
+  }
+};
+
+// 使用範例 - IoT Simulator
+const topic = MQTT_CONFIG.topics.powerData.build('6001');
+client.publish(topic, message);  // → "solar/6001/data"
+
+// 使用範例 - Backend Service
+const pattern = MQTT_CONFIG.topics.powerData.pattern;
+client.subscribe(pattern);  // → "solar/+/data"
+```
+
+#### 調試技巧
+
+如果懷疑 MQTT Topic 不匹配：
+
+1. **使用 MQTT 客戶端監聽所有 Topic**：
+   ```bash
+   # 使用 mosquitto_sub 監聽所有 Topic
+   docker exec solarsdgs-mqtt mosquitto_sub -h localhost -t '#' -v
+
+   # 輸出會顯示所有正在發送的消息：
+   # SOLARSDGS 2025_11_13_23_00_00/0/100/300  ← 發現問題！
+   ```
+
+2. **檢查 Backend 訂閱日誌**：
+   ```typescript
+   // MqttService.ts
+   this.client.subscribe('solar/+/data', (err) => {
+     if (!err) {
+       logger.info('✅ Subscribed to: solar/+/data');
+     }
+   });
+
+   // 日誌應該顯示：
+   // [INFO] [MqttService] ✅ Subscribed to: solar/+/data
+   // [INFO] [MqttService] ✅ Subscribed to: solar/+/gps
+   ```
+
+3. **檢查消息處理回調**：
+   ```typescript
+   this.client.on('message', (topic, message) => {
+     logger.info(`📥 Received message on topic: ${topic}`);
+     // 如果沒看到這個日誌，表示 Topic 不匹配
+   });
+   ```
+
+#### 經驗教訓
+
+這個問題花費了**數小時**才找到，因為：
+- Backend 日誌顯示「訂閱成功」，沒有錯誤訊息
+- 模擬器日誌顯示「發送成功」，沒有錯誤訊息
+- 資料庫完全沒有記錄，但沒有 SQL 錯誤
+- 需要使用 MQTT 監聽工具才能發現 Topic 不匹配
+
+**記住**：在 MQTT 系統中，Topic 的命名一致性是**首要關鍵**，任何不匹配都會導致消息完全無法送達，且不會有明顯的錯誤訊息。
+
+---
+
+### ⚠️ Docker Compose 部署完整流程 (PRODUCTION DEPLOYMENT)
+
+**重要性**: ⭐⭐⭐⭐⭐
+
+**日期**: 2025-11-13 | **Phase 1 完整部署成功**
+
+#### 部署架構
+
+```
+VPS (72.61.117.219) - Ubuntu 24.04 LTS
+├── Docker Compose (5 個容器)
+│   ├── Caddy (Reverse Proxy + HTTPS)
+│   ├── Frontend (Vue 3 PWA)
+│   ├── Backend (Node.js + Express + TypeScript)
+│   ├── PostgreSQL 16 (資料庫)
+│   └── Mosquitto MQTT (訊息代理)
+└── DNS (Hostinger)
+    ├── solarsdgs.online → Frontend
+    ├── api.solarsdgs.online → Backend
+    └── mqtt.solarsdgs.online → MQTT WebSocket
+```
+
+#### 部署步驟（已驗證成功）
+
+```bash
+# 1. SSH 連接 VPS (無密碼登入)
+ssh root@72.61.117.219
+
+# 2. 安裝 Docker + Docker Compose
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo apt install -y docker-compose-plugin
+
+# 3. 克隆專案 (或上傳代碼)
+git clone https://github.com/luftqi/SolarsdgsIOT.git
+cd SolarsdgsIOT
+
+# 4. 配置環境變數
+cd docker
+cp .env.example .env
+nano .env  # 設置實際密碼和配置
+
+# 5. 啟動所有服務
+docker compose up -d
+
+# 6. 檢查服務狀態
+docker compose ps
+# 應該看到 5 個容器都是 healthy 狀態
+
+# 7. 檢查日誌
+docker compose logs -f backend
+docker compose logs -f mqtt
+
+# 8. 驗證資料庫
+docker exec solarsdgs-postgres psql -U admin -d solar_db -c "SELECT COUNT(*) FROM power_data;"
+```
+
+#### 常見問題與解決方案
+
+**問題 1: npm ci 失敗**
+```
+錯誤: The 'npm ci' command can only install with an existing package-lock.json
+解決: 將 Dockerfile 中的 npm ci 改為 npm install
+```
+
+**問題 2: TypeScript 編譯失敗 (找不到類型)**
+```
+錯誤: Could not find a declaration file for module 'express'
+解決: 移除 --only=production 標誌，安裝 devDependencies
+修改: RUN npm install --only=production → RUN npm install
+```
+
+**問題 3: MQTT message_size_limit 過大**
+```
+錯誤: Invalid message_size_limit value (268435456)
+解決: Mosquitto 2.x 限制最大約 100MB，改為 10MB
+修改: message_size_limit 268435456 → message_size_limit 10485760
+```
+
+**問題 4: 資料庫沒有收到數據**
+```
+原因: MQTT Topic 不匹配
+解決: 確保 Simulator 發送的 Topic 與 Backend 訂閱的 Topic 一致
+修改: SOLARSDGS → solar/6001/data
+```
+
+#### 部署驗證清單
+
+- [x] SSH 無密碼登入配置成功
+- [x] Docker + Docker Compose 安裝完成
+- [x] 5 個容器全部啟動且狀態為 healthy
+- [x] PostgreSQL 資料庫可連接
+- [x] MQTT Broker 正常運行
+- [x] Backend 日誌顯示成功訂閱 MQTT Topic
+- [x] IoT 模擬器在 VPS 上運行
+- [x] 資料庫持續接收數據（91+ 記錄）
+- [x] Caddy 自動 HTTPS 配置（Let's Encrypt）
+
+#### 生產環境監控命令
+
+```bash
+# 檢查容器狀態
+docker compose ps
+
+# 查看實時日誌
+docker compose logs -f
+
+# 查看特定服務日誌
+docker compose logs -f backend
+docker compose logs -f mqtt
+docker compose logs -f postgres
+
+# 檢查資料庫記錄數
+docker exec solarsdgs-postgres psql -U admin -d solar_db \
+  -c "SELECT COUNT(*) as total, MAX(timestamp) as latest FROM power_data;"
+
+# 重啟特定服務
+docker compose restart backend
+
+# 重啟所有服務
+docker compose restart
+
+# 停止所有服務
+docker compose down
+
+# 完全清理（包括 volumes）
+docker compose down -v
+```
+
+---
+
 ## 🏗️ 核心架構原則
 
 ### 1. **Docker Compose 容器化架構**
