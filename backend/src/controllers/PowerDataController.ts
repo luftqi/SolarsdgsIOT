@@ -102,29 +102,17 @@ export class PowerDataController {
       }
 
       // 轉換為 DTO
-      const items: PowerDataDTO[] = Array.isArray(data)
-        ? data.map(item => ({
-            id: item.id,
-            deviceId: item.device_id,
-            timestamp: item.timestamp.toISOString(),
-            pg: item.pg,
-            pa: item.pa,
-            pp: item.pp,
-            pagEfficiency: item.pga_efficiency,
-            ppgEfficiency: item.pgp_efficiency,
-            createdAt: item.created_at.toISOString()
-          }))
-        : [{
-            id: data.id,
-            deviceId: data.device_id,
-            timestamp: data.timestamp.toISOString(),
-            pg: data.pg,
-            pa: data.pa,
-            pp: data.pp,
-            pagEfficiency: data.pga_efficiency,
-            ppgEfficiency: data.pgp_efficiency,
-            createdAt: data.created_at.toISOString()
-          }];
+      const items: PowerDataDTO[] = data.map(item => ({
+        id: item.id || 0,
+        deviceId: item.device_id,
+        timestamp: item.timestamp.toISOString(),
+        pg: item.pg,
+        pa: item.pa,
+        pp: item.pp,
+        pagEfficiency: item.pga_efficiency || null,
+        ppgEfficiency: item.pgp_efficiency || null,
+        createdAt: item.created_at?.toISOString() || new Date().toISOString()
+      }));
 
       // 直接返回數據列表
       res.json({
