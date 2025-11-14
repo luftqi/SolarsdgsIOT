@@ -19,6 +19,9 @@ RUN npm install && \
 COPY tsconfig.json ./
 COPY src/ ./src/
 
+# Copy dashboard.html
+COPY dashboard.html ./dashboard.html
+
 # Build TypeScript
 RUN npm install -g typescript && \
     npm run build && \
@@ -36,6 +39,9 @@ RUN apk add --no-cache wget
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
+
+# Copy dashboard.html from build context
+COPY --from=builder /app/dashboard.html ./dashboard.html
 
 # Create logs directory
 RUN mkdir -p /app/logs
