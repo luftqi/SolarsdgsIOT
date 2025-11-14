@@ -26,7 +26,7 @@ export class PowerDataController {
 
       this.logger.info(`Getting latest power data for device: ${deviceId}`);
 
-      const latestData = await this.powerDataRepo.findLatest(deviceId);
+      const latestData = (await this.powerDataRepo.getLatestData(deviceId, 1))[0];
 
       if (!latestData) {
         res.status(404).json({
@@ -88,21 +88,18 @@ export class PowerDataController {
       // 如果指定 latest，只取最新 N 筆
       if (latest) {
         const latestCount = parseInt(latest as string);
-        data = await this.powerDataRepo.findLatest(deviceId, latestCount);
+        data = await this.powerDataRepo.getLatestData(deviceId, latestCount);
       }
       // 如果指定時間範圍
       else if (startDate && endDate) {
         const start = new Date(startDate as string);
         const end = new Date(endDate as string);
-        data = await this.powerDataRepo.findByDateRange(deviceId, start, end);
+        data = await this.powerDataRepo.getDataByTimeRange(deviceId, start, end);
       }
-      // 否則使用分頁查詢
+      // 否則使用預設查詢（最新 100 筆）
       else {
-        const pageNum = parseInt(page as string);
         const limitNum = parseInt(limit as string);
-        const offset = (pageNum - 1) * limitNum;
-
-        data = await this.powerDataRepo.findByDevice(deviceId, limitNum, offset);
+        data = await this.powerDataRepo.getLatestData(deviceId, limitNum);
       }
 
       // 轉換為 DTO
@@ -130,33 +127,12 @@ export class PowerDataController {
             createdAt: data.created_at.toISOString()
           }];
 
-      // 如果是分頁查詢，返回分頁資訊
-      if (!latest && !startDate) {
-        const total = await this.powerDataRepo.count(deviceId);
-        const pageNum = parseInt(page as string);
-        const limitNum = parseInt(limit as string);
-
-        const paginatedResponse: PaginatedResponse<PowerDataDTO> = {
-          items,
-          total,
-          page: pageNum,
-          limit: limitNum,
-          totalPages: Math.ceil(total / limitNum)
-        };
-
-        res.json({
-          success: true,
-          data: paginatedResponse,
-          timestamp: new Date().toISOString()
-        } as ApiResponse<PaginatedResponse<PowerDataDTO>>);
-      } else {
-        // 直接返回數據列表
-        res.json({
-          success: true,
-          data: items,
-          timestamp: new Date().toISOString()
-        } as ApiResponse<PowerDataDTO[]>);
-      }
+      // 直接返回數據列表
+      res.json({
+        success: true,
+        data: items,
+        timestamp: new Date().toISOString()
+      } as ApiResponse<PowerDataDTO[]>);
 
     } catch (error: any) {
       this.logger.error('Failed to get power data list:', error);
@@ -182,7 +158,7 @@ export class PowerDataController {
       this.logger.info(`Getting chart data for device: ${deviceId}`);
 
       const latestCount = parseInt(latest as string);
-      const data = await this.powerDataRepo.findLatest(deviceId, latestCount);
+      const data = await this.powerDataRepo.getLatestData(deviceId, latestCount);
 
       if (!Array.isArray(data) || data.length === 0) {
         res.status(404).json({
@@ -275,10 +251,10 @@ export class PowerDataController {
       if (startDate && endDate) {
         const start = new Date(startDate as string);
         const end = new Date(endDate as string);
-        data = await this.powerDataRepo.findByDateRange(deviceId, start, end);
+        data = await this.powerDataRepo.getDataByTimeRange(deviceId, start, end);
       } else {
         // 取最近 1000 筆數據進行統計
-        data = await this.powerDataRepo.findLatest(deviceId, 1000);
+        data = await this.powerDataRepo.getLatestData(deviceId, 1000);
       }
 
       if (!Array.isArray(data) || data.length === 0) {

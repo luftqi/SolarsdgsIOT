@@ -10,7 +10,8 @@ import { DatabaseService } from '../services/database/DatabaseService';
 export function createPowerDataRoutes(): Router {
   const router = Router();
   const dbService = DatabaseService.getInstance();
-  const powerDataRepo = new PowerDataRepository(dbService);
+  const pool = dbService.getPool();
+  const powerDataRepo = new PowerDataRepository(pool);
   const controller = new PowerDataController(powerDataRepo);
 
   // GET /api/devices/:deviceId/power-data/latest - 最新一筆數據

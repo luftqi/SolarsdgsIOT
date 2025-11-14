@@ -13,6 +13,7 @@ import { Logger } from './utils/logger';
 // Routes
 import deviceRoutes from './routes/device.routes';
 import powerDataRoutes from './routes/powerData.routes';
+import { createPowerDataRoutes } from './routes/powerDataRoutes';
 import gpsRoutes from './routes/gps.routes';
 import healthRoutes from './routes/health.routes';
 
@@ -80,6 +81,7 @@ export function createApp(): Application {
   // API Routes
   app.use('/api/devices', deviceRoutes);
   app.use('/api/power-data', powerDataRoutes);
+  app.use('/api/power-data', createPowerDataRoutes());  // Phase 2 routes
   app.use('/api/gps', gpsRoutes);
 
   // Root endpoint
