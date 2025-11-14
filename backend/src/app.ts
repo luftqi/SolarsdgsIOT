@@ -84,6 +84,11 @@ export function createApp(): Application {
   app.use('/api/power-data', createPowerDataRoutes());  // Phase 2 routes
   app.use('/api/gps', gpsRoutes);
 
+  // Dashboard route
+  app.get('/dashboard', (_req: Request, res: Response) => {
+    res.sendFile('/app/dashboard.html');
+  });
+
   // Root endpoint
   app.get('/', (_req: Request, res: Response) => {
     res.json({
@@ -95,6 +100,7 @@ export function createApp(): Application {
         devices: '/api/devices',
         powerData: '/api/power-data',
         gps: '/api/gps',
+        dashboard: '/dashboard',
       },
     });
   });
