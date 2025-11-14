@@ -90,6 +90,11 @@ export function createApp(): Application {
     res.sendFile('/app/dashboard.html');
   });
 
+  // API Test route
+  app.get('/test-api', (_req: Request, res: Response) => {
+    res.sendFile('/app/test-api.html');
+  });
+
   // Root endpoint
   app.get('/', (_req: Request, res: Response) => {
     res.json({

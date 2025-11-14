@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>API Test</title>
+</head>
+<body>
+    <h1>API 測試頁面</h1>
+    <button onclick="testAPI()">測試 API</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function testAPI() {
+            const resultEl = document.getElementById('result');
+            resultEl.textContent = '正在請求...';
+
+            try {
+                const url = '/api/power-data/device/6001/latest?limit=5';
+                console.log('Fetching:', url);
+
+                const response = await fetch(url);
+                console.log('Response status:', response.status);
+
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                resultEl.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                console.error('Error:', error);
+                resultEl.textContent = 'ERROR: ' + error.message;
+            }
+        }
+
+        // 自動執行
+        window.onload = () => {
+            testAPI();
+        };
+    </script>
+</body>
+</html>
