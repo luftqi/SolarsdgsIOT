@@ -21,6 +21,7 @@ COPY src/ ./src/
 
 # Copy dashboard.html and test files
 COPY dashboard.html ./dashboard.html
+COPY dashboard-debug.html ./dashboard-debug.html
 COPY test-api.html ./test-api.html
 
 # Build TypeScript
@@ -43,6 +44,7 @@ COPY --from=builder /app/package*.json ./
 
 # Copy dashboard.html and test files from build context
 COPY --from=builder /app/dashboard.html ./dashboard.html
+COPY --from=builder /app/dashboard-debug.html ./dashboard-debug.html
 COPY --from=builder /app/test-api.html ./test-api.html
 
 # Create logs directory

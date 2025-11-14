@@ -85,9 +85,13 @@ export function createApp(): Application {
   app.use('/api/power-data', createPowerDataRoutes());  // Phase 2 routes
   app.use('/api/gps', gpsRoutes);
 
-  // Dashboard route
+  // Dashboard routes
   app.get('/dashboard', (_req: Request, res: Response) => {
     res.sendFile('/app/dashboard.html');
+  });
+
+  app.get('/dashboard-debug', (_req: Request, res: Response) => {
+    res.sendFile('/app/dashboard-debug.html');
   });
 
   // API Test route

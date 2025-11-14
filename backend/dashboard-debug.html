@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Debug</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+        .card { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .value { font-size: 48px; font-weight: bold; color: #0094CE; }
+        .label { color: #666; margin-bottom: 10px; }
+        pre { background: #f0f0f0; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🌞 SolarSDGs IoT Debug Dashboard</h1>
+
+    <div class="card">
+        <div class="label">發電功率 (PG)</div>
+        <div class="value" id="pg">--</div>
+    </div>
+
+    <div class="card">
+        <div class="label">負載 A (PA)</div>
+        <div class="value" id="pa">--</div>
+    </div>
+
+    <div class="card">
+        <div class="label">負載 P (PP)</div>
+        <div class="value" id="pp">--</div>
+    </div>
+
+    <div class="card">
+        <h3>API 回應 (最新 5 筆)</h3>
+        <pre id="raw-data">載入中...</pre>
+    </div>
+
+    <div class="card">
+        <h3>Debug 日誌</h3>
+        <pre id="debug-log"></pre>
+    </div>
+
+    <script>
+        const log = [];
+        function addLog(msg) {
+            const timestamp = new Date().toLocaleTimeString();
+            log.push(`[${timestamp}] ${msg}`);
+            document.getElementById('debug-log').textContent = log.join('\n');
+            console.log(msg);
+        }
+
+        async function loadData() {
+            try {
+                addLog('開始載入數據...');
+
+                const url = '/api/power-data/device/6001/latest?limit=5';
+                addLog(`請求 URL: ${url}`);
+
+                const response = await fetch(url);
+                addLog(`HTTP 狀態: ${response.status}`);
+
+                const data = await response.json();
+                addLog(`JSON 解析成功`);
+
+                document.getElementById('raw-data').textContent = JSON.stringify(data, null, 2);
+
+                if (data.success && data.data && data.data.records && data.data.records.length > 0) {
+                    const latest = data.data.records[0];
+                    document.getElementById('pg').textContent = latest.pg + ' W';
+                    document.getElementById('pa').textContent = latest.pa + ' W';
+                    document.getElementById('pp').textContent = latest.pp + ' W';
+                    addLog(`✅ 成功載入 ${data.data.records.length} 筆數據`);
+                } else {
+                    addLog('❌ 數據格式錯誤或無數據');
+                }
+            } catch (error) {
+                addLog(`❌ 錯誤: ${error.message}`);
+                document.getElementById('raw-data').textContent = `ERROR: ${error.message}\n${error.stack}`;
+            }
+        }
+
+        // 頁面載入時執行
+        addLog('頁面載入完成');
+        loadData();
+
+        // 每 10 秒自動更新
+        setInterval(loadData, 10000);
+    </script>
+</body>
+</html>
