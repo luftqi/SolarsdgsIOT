@@ -38,7 +38,7 @@ export class PowerDataController {
       }
 
       const dto: PowerDataDTO = {
-        id: latestData.id,
+        id: latestData.id || 0,
         deviceId: latestData.device_id,
         timestamp: latestData.timestamp.toISOString(),
         pg: latestData.pg,
