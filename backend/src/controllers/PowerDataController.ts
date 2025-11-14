@@ -6,7 +6,7 @@
 import { Request, Response } from 'express';
 import { PowerDataRepository } from '../services/database/PowerDataRepository';
 import { Logger } from '../utils/logger';
-import type { ApiResponse, PowerDataDTO, PaginatedResponse, ChartDataPoint } from '../types/api';
+import type { ApiResponse, PowerDataDTO, ChartDataPoint } from '../types/api';
 
 export class PowerDataController {
   private readonly logger = new Logger('PowerDataController');
@@ -44,9 +44,9 @@ export class PowerDataController {
         pg: latestData.pg,
         pa: latestData.pa,
         pp: latestData.pp,
-        pagEfficiency: latestData.pga_efficiency,
-        ppgEfficiency: latestData.pgp_efficiency,
-        createdAt: latestData.created_at.toISOString()
+        pagEfficiency: latestData.pga_efficiency || null,
+        ppgEfficiency: latestData.pgp_efficiency || null,
+        createdAt: latestData.created_at?.toISOString() || new Date().toISOString()
       };
 
       res.json({
@@ -74,7 +74,6 @@ export class PowerDataController {
     try {
       const { deviceId } = req.params;
       const {
-        page = 1,
         limit = 100,
         startDate,
         endDate,
@@ -83,7 +82,7 @@ export class PowerDataController {
 
       this.logger.info(`Getting power data list for device: ${deviceId}`);
 
-      let data: any[];
+      let data: any[] = [];
 
       // 如果指定 latest，只取最新 N 筆
       if (latest) {
