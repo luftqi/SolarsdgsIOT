@@ -1,0 +1,661 @@
+/* ================================================================
+   SOLARSDGS 管理員頁面樣式表
+   品牌色系：金黃 (#FFD700 / #FFC107 / #FFB300) + 深藍黑 (#2c3e50)
+   
+   ⚠️ 使用說明：
+   1. 複製這整個檔案的內容
+   2. 貼到 Dashboard 2.0 → Site → CSS (overrides) 區域
+   3. 貼在登入頁面 CSS 的【下方】（不要刪除登入 CSS）
+   4. 點擊儲存
+   ================================================================ */
+
+/* 🎨 CSS 變數定義 */
+:root {
+    --primary-gold: #FFC107;
+    --primary-gold-light: #FFD700;
+    --primary-gold-dark: #FFB300;
+    --dark-blue: #2c3e50;
+    --dark-blue-light: #34495e;
+    --success-green: #4CAF50;
+    --warning-orange: #f39c12;
+    --danger-red: #e74c3c;
+    --text-dark: #2c3e50;
+    --text-light: #7f8c8d;
+    --bg-light: #f5f6fa;
+    --border-color: #e1e8ed;
+}
+
+/* ================================================================
+   基礎樣式
+   ================================================================ */
+.admin-dashboard {
+    min-height: 100vh;
+    background: var(--bg-light);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* ================================================================
+   頂部 Header - 深色背景 + 金黃 LOGO
+   ================================================================ */
+.admin-header {
+    background: linear-gradient(135deg, var(--dark-blue) 0%, var(--dark-blue-light) 100%);
+    color: white;
+    padding: 20px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* LOGO 樣式 */
+.admin-logo {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: white;
+    padding: 6px;
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+}
+
+.admin-header h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--primary-gold);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.header-actions {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.admin-name {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.logout-btn {
+    background: var(--danger-red);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.logout-btn:hover {
+    background: #c0392b;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+}
+
+/* ================================================================
+   頁籤導航 - 金黃色 Active 狀態
+   ================================================================ */
+.tabs {
+    background: white;
+    padding: 0 30px;
+    display: flex;
+    gap: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.tab {
+    padding: 16px 28px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-light);
+    transition: all 0.3s ease;
+}
+
+.tab:hover:not(.active) {
+    color: var(--text-dark);
+    background: rgba(255, 193, 7, 0.05);
+}
+
+.tab.active {
+    border-bottom-color: var(--primary-gold);
+    color: var(--primary-gold);
+    background: rgba(255, 193, 7, 0.08);
+}
+
+/* ================================================================
+   主要內容區域
+   ================================================================ */
+.tab-content {
+    padding: 30px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* 工具列 */
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.toolbar h2 {
+    margin: 0;
+    font-size: 24px;
+    color: var(--text-dark);
+    font-weight: 700;
+}
+
+.toolbar-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* ================================================================
+   按鈕樣式 - 金黃色主按鈕
+   ================================================================ */
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-gold-light) 0%, var(--primary-gold) 50%, var(--primary-gold-dark) 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 193, 7, 0.4);
+}
+
+.btn-secondary {
+    background: var(--dark-blue-light);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background: var(--dark-blue);
+    transform: translateY(-2px);
+}
+
+.btn-sm {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    margin-right: 5px;
+}
+
+.btn-edit {
+    background: var(--primary-gold);
+    color: white;
+}
+
+.btn-edit:hover {
+    background: var(--primary-gold-dark);
+    transform: translateY(-1px);
+}
+
+.btn-toggle {
+    background: var(--text-light);
+    color: white;
+}
+
+.btn-toggle:hover {
+    background: var(--text-dark);
+}
+
+.btn-view {
+    background: var(--dark-blue);
+    color: white;
+}
+
+.btn-view:hover {
+    background: var(--dark-blue-light);
+}
+
+/* ================================================================
+   資料表格 - 現代化設計
+   ================================================================ */
+.data-table {
+    width: 100%;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.data-table thead {
+    background: linear-gradient(135deg, var(--dark-blue) 0%, var(--dark-blue-light) 100%);
+    color: white;
+}
+
+.data-table th {
+    padding: 16px 20px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.data-table tbody tr {
+    border-bottom: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.data-table tbody tr:hover {
+    background: rgba(255, 193, 7, 0.05);
+}
+
+.data-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.data-table td {
+    padding: 16px 20px;
+    color: var(--text-dark);
+    font-size: 14px;
+}
+
+.data-table td strong {
+    color: var(--primary-gold-dark);
+    font-weight: 700;
+}
+
+/* 徽章 */
+.badge {
+    background: var(--primary-gold);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* 設備標籤 */
+.device-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.device-tag {
+    background: rgba(255, 193, 7, 0.15);
+    color: var(--primary-gold-dark);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.text-muted {
+    color: var(--text-light);
+    font-style: italic;
+}
+
+/* 狀態指示器 */
+.status {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.status.active {
+    background: rgba(76, 175, 80, 0.15);
+    color: var(--success-green);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.status.inactive {
+    background: rgba(127, 140, 141, 0.15);
+    color: var(--text-light);
+    border: 1px solid rgba(127, 140, 141, 0.3);
+}
+
+.device-status {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.device-status.online {
+    background: rgba(76, 175, 80, 0.15);
+    color: var(--success-green);
+}
+
+.device-status.offline {
+    background: rgba(231, 76, 60, 0.15);
+    color: var(--danger-red);
+}
+
+/* ================================================================
+   Modal 彈窗
+   ================================================================ */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.modal-content {
+    background: white;
+    border-radius: 16px;
+    padding: 30px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-content h2 {
+    margin: 0 0 25px 0;
+    font-size: 24px;
+    color: var(--text-dark);
+    font-weight: 700;
+}
+
+/* 表單群組 */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-dark);
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    background: white;
+    color: var(--text-dark);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary-gold);
+    box-shadow: 0 0 0 4px rgba(255, 193, 7, 0.1);
+}
+
+.form-control:disabled {
+    background: var(--bg-light);
+    cursor: not-allowed;
+}
+
+.hint {
+    display: block;
+    margin-top: 6px;
+    color: var(--text-light);
+    font-size: 12px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 25px;
+}
+
+/* ================================================================
+   統計卡片 - 全域監控
+   ================================================================ */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-top: 30px;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    border-left: 4px solid var(--primary-gold);
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.stat-icon {
+    font-size: 40px;
+    margin-bottom: 15px;
+}
+
+.stat-value {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--primary-gold-dark);
+    margin-bottom: 8px;
+}
+
+.stat-label {
+    font-size: 14px;
+    color: var(--text-light);
+    font-weight: 600;
+}
+
+/* ================================================================
+   空狀態 & 載入狀態
+   ================================================================ */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.empty-state p {
+    font-size: 18px;
+    color: var(--text-light);
+    margin-bottom: 20px;
+}
+
+.loading-box {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.loading-box p {
+    font-size: 18px;
+    color: var(--primary-gold);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* ================================================================
+   響應式設計 - 手機優化
+   ================================================================ */
+@media (max-width: 768px) {
+    .admin-header {
+        flex-direction: column;
+        gap: 15px;
+        padding: 15px 20px;
+    }
+
+    .header-left {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .header-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .tabs {
+        padding: 0 15px;
+        overflow-x: auto;
+    }
+
+    .tab {
+        padding: 14px 20px;
+        font-size: 14px;
+        white-space: nowrap;
+    }
+
+    .tab-content {
+        padding: 20px 15px;
+    }
+
+    .toolbar {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+
+    .toolbar-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .toolbar-actions button {
+        width: 100%;
+    }
+
+    .data-table {
+        font-size: 13px;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 12px 10px;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-content {
+        width: 95%;
+        padding: 20px;
+    }
+
+    .modal-actions {
+        flex-direction: column;
+    }
+
+    .modal-actions button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .admin-header h1 {
+        font-size: 18px;
+    }
+
+    .admin-logo {
+        width: 35px;
+        height: 35px;
+    }
+
+    .data-table {
+        display: block;
+        overflow-x: auto;
+    }
+}
+
+/* ================================================================
+   暗黑模式覆蓋（強制停用）
+   ================================================================ */
+@media (prefers-color-scheme: dark) {
+
+    .admin-dashboard,
+    .admin-dashboard * {
+        color-scheme: light !important;
+    }
+}

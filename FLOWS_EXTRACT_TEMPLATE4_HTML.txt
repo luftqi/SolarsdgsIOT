@@ -1,0 +1,532 @@
+<template>
+    <div class="admin-dashboard">
+        <!-- Header -->
+        <div class="admin-header">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <!-- LOGO -->
+                <img :src="logoBase64"
+                     alt="SOLARSDGS"
+                     style="height: 40px; filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.6));">
+                <h1>SOLARSDGS 管理中心</h1>
+            </div>
+            <button @click="logout" class="logout-btn">登出</button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button v-for="tab in tabs"
+                    :key="tab.id"
+                    @click="activeTab = tab.id"
+                    :class="['tab', {active: activeTab === tab.id}]">
+                {{tab.icon}} {{tab.name}}
+            </button>
+        </div>
+
+        <!-- 客戶管理 -->
+        <div v-if="activeTab === 'customers'" class="tab-content">
+            <div class="toolbar">
+                <h2>客戶管理</h2>
+                <button @click="showAddCustomer = true" class="btn-primary">
+                    ➕ 新增客戶
+                </button>
+            </div>
+
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>客戶代碼</th>
+                        <th>公司名稱</th>
+                        <th>設備數量</th>
+                        <th>狀態</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="customer in customers" :key="customer.customer_code">
+                        <td><strong>{{customer.customer_code}}</strong></td>
+                        <td>{{customer.customer_name}}</td>
+                        <td>{{customer.device_count || 0}}</td>
+                        <td>
+                            <span :class="['status-badge', customer.is_active ? 'active' : 'inactive']">
+                                {{customer.is_active ? '啟用' : '停用'}}
+                            </span>
+                        </td>
+                        <td>
+                            <button @click="editCustomer(customer)" class="btn-sm">編輯</button>
+                            <button @click="toggleCustomer(customer)" class="btn-sm">
+                                {{customer.is_active ? '停用' : '啟用'}}
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 設備管理（手動版）-->
+        <div v-if="activeTab === 'devices'" class="tab-content">
+            <div class="toolbar">
+                <h2>設備管理</h2>
+                <div class="toolbar-actions">
+                    <button @click="showAddDevice = true" class="btn-primary">
+                        ➕ 新增設備
+                    </button>
+                    <button @click="loadAllDevices" class="btn-secondary">
+                        🔄 重新載入
+                    </button>
+                </div>
+            </div>
+
+            <!-- 載入中 -->
+            <div v-if="devicesLoading" class="loading-box">
+                <p>⏳ 載入設備列表中...</p>
+            </div>
+
+            <!-- 設備列表 -->
+            <div v-else-if="allDevices.length > 0">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>設備編號</th>
+                            <th>設備名稱</th>
+                            <th>位置</th>
+                            <th>擁有者</th>
+                            <th>最後上線</th>
+                            <th>狀態</th>
+                            <th>數據筆數</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="device in allDevices" :key="device.device_id">
+                            <td><strong>{{device.device_id}}</strong></td>
+                            <td>{{device.device_name || '-'}}</td>
+                            <td>{{device.location || '-'}}</td>
+                            <td>{{getDeviceOwner(device.device_id)}}</td>
+                            <td>{{formatDateTime(device.last_seen)}}</td>
+                            <td>
+                                <span :class="['device-status', isDeviceOnline(device) ? 'online' : 'offline']">
+                                    {{isDeviceOnline(device) ? '在線' : device.last_seen ? '離線' : '未上線'}}
+                                </span>
+                            </td>
+                            <td>{{device.data_count || 0}}</td>
+                            <td>
+                                <button @click="editDevice(device)" class="btn-sm btn-edit">編輯</button>
+                                <button @click="reassignDevice(device.device_id)" class="btn-sm btn-assign">分配</button>
+                                <button @click="goToDeviceMonitor(device.device_id)" class="btn-sm btn-monitor">📊 監控</button>
+                                <button @click="deleteDevice(device)" class="btn-sm btn-danger">刪除</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 無設備 -->
+            <div v-else class="empty-box">
+                <p>📭 目前沒有任何設備</p>
+                <p class="text-muted">點擊「➕ 新增設備」按鈕來手動添加設備</p>
+            </div>
+        </div>
+
+        <!-- 新增/編輯客戶對話框 -->
+        <div v-if="showAddCustomer || editingCustomer" class="modal">
+            <div class="modal-content">
+                <h2>{{editingCustomer ? '編輯客戶' : '新增客戶'}}</h2>
+
+                <div class="form-group">
+                    <label>客戶代碼</label>
+                    <input v-model="formData.customer_code"
+                           placeholder="如: D001"
+                           :disabled="!!editingCustomer"
+                           class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label>公司名稱</label>
+                    <input v-model="formData.customer_name"
+                           placeholder="如: 台灣太陽能科技"
+                           class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label>登入密碼</label>
+                    <input v-model="formData.password"
+                           type="password"
+                           :placeholder="editingCustomer ? '留空表示不修改' : '請設定密碼'"
+                           class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label>分配設備（可選）</label>
+                    <div class="device-selector">
+                        <label v-for="device in allDevices" :key="device.device_id" class="checkbox-label">
+                            <input type="checkbox" 
+                                   :value="device.device_id"
+                                   v-model="formData.devices">
+                            {{device.device_id}} - {{device.device_name || '未命名'}}
+                        </label>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button @click="saveCustomer" class="btn-primary">儲存</button>
+                    <button @click="closeCustomerModal" class="btn-secondary">取消</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 分配設備對話框 -->
+        <div v-if="showReassignDialog" class="modal">
+            <div class="modal-content">
+                <h2>分配設備: {{reassignDeviceId}}</h2>
+
+                <div class="form-group">
+                    <label>選擇客戶</label>
+                    <select v-model="reassignToCustomer" class="form-control">
+                        <option value="">-- 移除分配（設為未分配）--</option>
+                        <option v-for="customer in customers" 
+                                :key="customer.customer_code"
+                                :value="customer.customer_code">
+                            {{customer.customer_code}} - {{customer.customer_name}}
+                        </option>
+                    </select>
+                </div>
+
+                <div class="modal-actions">
+                    <button @click="confirmReassign" class="btn-primary">確定分配</button>
+                    <button @click="showReassignDialog = false" class="btn-secondary">取消</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 新增/編輯設備對話框 -->
+        <div v-if="showAddDevice || editingDevice" class="modal">
+            <div class="modal-content">
+                <h2>{{editingDevice ? '編輯設備' : '新增設備'}}</h2>
+
+                <div class="form-group">
+                    <label>設備編號 *</label>
+                    <input v-model="deviceFormData.device_id"
+                           placeholder="如: 6001 或 A001"
+                           :disabled="!!editingDevice"
+                           class="form-control">
+                    <small class="hint">建議格式：6001-6999 或 A001-Z999</small>
+                </div>
+
+                <div class="form-group">
+                    <label>設備名稱</label>
+                    <input v-model="deviceFormData.device_name"
+                           placeholder="如: 測試機-台中廠"
+                           class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label>設備位置</label>
+                    <input v-model="deviceFormData.location"
+                           placeholder="如: 台中市西屯區"
+                           class="form-control">
+                </div>
+
+                <div class="modal-actions">
+                    <button @click="saveDevice" class="btn-primary">儲存</button>
+                    <button @click="closeDeviceModal" class="btn-secondary">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+    export default {
+    data() {
+        return {
+            activeTab: 'customers',
+            tabs: [
+                {id: 'customers', name: '客戶管理', icon: '👥'},
+                {id: 'devices', name: '設備分配', icon: '📟'}
+            ],
+            customers: [],
+            allDevices: [],
+            devicesLoading: false,
+            
+            // LOGO Base64（預留位置）
+            logoBase64: 'data:image/png;base64,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',
+            // 客戶相關
+            showAddCustomer: false,
+            editingCustomer: null,
+            formData: {
+                customer_code: '',
+                customer_name: '',
+                password: '',
+                devices: []
+            },
+            
+            // 設備相關
+            showAddDevice: false,
+            editingDevice: null,
+            deviceFormData: {
+                device_id: '',
+                device_name: '',
+                location: ''
+            },
+            
+            // 分配相關
+            showReassignDialog: false,
+            reassignDeviceId: '',
+            reassignToCustomer: ''
+        }
+    },
+    
+    mounted() {
+        console.log('👨‍💼 管理員頁面載入（手動設備管理版）');
+        
+        const isAdmin = localStorage.getItem('solar_is_admin');
+        if (isAdmin !== 'true') {
+            alert('⛔ 無權限訪問管理頁面');
+            window.location.href = '/dashboard/login';
+            return;
+        }
+        
+        this.loadCustomers();
+        this.loadAllDevices();
+    },
+    
+    methods: {
+        // ========== 客戶管理 ==========
+        loadCustomers() {
+            console.log('📋 載入客戶列表');
+            this.send({
+                payload: {
+                    action: 'list_customers'
+                }
+            });
+        },
+        
+        saveCustomer() {
+            if (!this.formData.customer_code || !this.formData.customer_name) {
+                alert('⚠️ 請填寫客戶代碼和公司名稱');
+                return;
+            }
+            
+            const action = this.editingCustomer ? 'update_customer' : 'add_customer';
+            const payload = {
+                action: action,
+                customer_code: this.formData.customer_code,
+                customer_name: this.formData.customer_name,
+                devices: this.formData.devices
+            };
+            
+            if (this.formData.password) {
+                payload.password = this.formData.password;
+            }
+            
+            console.log(`💾 ${this.editingCustomer ? '更新' : '新增'}客戶:`, payload);
+            this.send({ payload });
+            
+            this.closeCustomerModal();
+            setTimeout(() => this.loadCustomers(), 500);
+        },
+        
+        editCustomer(customer) {
+            console.log('✏️ 編輯客戶:', customer);
+            this.editingCustomer = customer;
+            this.formData = {
+                customer_code: customer.customer_code,
+                customer_name: customer.customer_name,
+                password: '',
+                devices: customer.devices || []
+            };
+        },
+        
+        toggleCustomer(customer) {
+            const action = customer.is_active ? 'disable_customer' : 'enable_customer';
+            const actionText = customer.is_active ? '停用' : '啟用';
+            
+            if (!confirm(`確定要${actionText}客戶 ${customer.customer_code} 嗎？`)) return;
+            
+            console.log(`🔄 ${actionText}客戶:`, customer.customer_code);
+            this.send({
+                payload: {
+                    action: action,
+                    customer_code: customer.customer_code
+                }
+            });
+            
+            setTimeout(() => this.loadCustomers(), 500);
+        },
+        
+        closeCustomerModal() {
+            this.showAddCustomer = false;
+            this.editingCustomer = null;
+            this.formData = {
+                customer_code: '',
+                customer_name: '',
+                password: '',
+                devices: []
+            };
+        },
+        
+        // ========== 設備管理 ==========
+        loadAllDevices() {
+            console.log('📋 載入所有設備');
+            this.devicesLoading = true;
+            this.send({
+                payload: {
+                    action: 'list_all_devices'
+                }
+            });
+        },
+        
+        saveDevice() {
+            if (!this.deviceFormData.device_id) {
+                alert('⚠️ 請填寫設備編號');
+                return;
+            }
+            
+            const action = this.editingDevice ? 'update_device' : 'add_device';
+            const payload = {
+                action: action,
+                device_id: this.deviceFormData.device_id,
+                device_name: this.deviceFormData.device_name,
+                location: this.deviceFormData.location
+            };
+            
+            console.log(`💾 ${this.editingDevice ? '更新' : '新增'}設備:`, payload);
+            this.send({ payload });
+            
+            this.closeDeviceModal();
+            setTimeout(() => this.loadAllDevices(), 500);
+        },
+        
+        editDevice(device) {
+            console.log('✏️ 編輯設備:', device);
+            this.editingDevice = device;
+            this.deviceFormData = {
+                device_id: device.device_id,
+                device_name: device.device_name || '',
+                location: device.location || ''
+            };
+            this.showAddDevice = true;
+        },
+        
+        deleteDevice(device) {
+            if (!confirm(`確定要刪除設備 ${device.device_id} 嗎？\n⚠️ 此操作無法復原！`)) return;
+            
+            console.log('🗑️ 刪除設備:', device.device_id);
+            this.send({
+                payload: {
+                    action: 'delete_device',
+                    device_id: device.device_id
+                }
+            });
+            
+            setTimeout(() => this.loadAllDevices(), 500);
+        },
+        
+        closeDeviceModal() {
+            this.showAddDevice = false;
+            this.editingDevice = null;
+            this.deviceFormData = {
+                device_id: '',
+                device_name: '',
+                location: ''
+            };
+        },
+        
+        reassignDevice(deviceId) {
+            console.log('🔄 開啟分配對話框:', deviceId);
+            this.reassignDeviceId = deviceId;
+            this.reassignToCustomer = '';
+            this.showReassignDialog = true;
+        },
+        
+        confirmReassign() {
+            console.log(`🔄 分配設備 ${this.reassignDeviceId} 給 ${this.reassignToCustomer || '未分配'}`);
+            
+            this.send({
+                payload: {
+                    action: 'reassign_device',
+                    device_id: this.reassignDeviceId,
+                    customer_code: this.reassignToCustomer || null
+                }
+            });
+            
+            this.showReassignDialog = false;
+            setTimeout(() => {
+                this.loadCustomers();
+                this.loadAllDevices();
+            }, 500);
+        },
+        
+        // ========== 監控功能 ==========
+        goToDeviceMonitor(deviceId) {
+            console.log(`📊 跳轉到設備 ${deviceId} 的監控頁面`);
+            window.location.href = `/dashboard/page1?device=${deviceId}`;
+        },
+        
+        // ========== 輔助函數 ==========
+        getDeviceOwner(deviceId) {
+            for (const customer of this.customers) {
+                if (customer.devices && customer.devices.includes(deviceId)) {
+                    return customer.customer_code;
+                }
+            }
+            return '-';
+        },
+        
+        isDeviceOnline(device) {
+            if (!device.last_seen) return false;
+            const lastSeen = new Date(device.last_seen);
+            const now = new Date();
+            const diffMinutes = (now - lastSeen) / 1000 / 60;
+            return diffMinutes < 5;
+        },
+        
+        formatDateTime(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleString('zh-TW', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        },
+        
+        logout() {
+            if (!confirm('確定要登出嗎？')) return;
+            localStorage.removeItem('solar_is_admin');
+            localStorage.removeItem('solar_customer_code');
+            window.location.href = '/dashboard/login';
+        }
+    },
+    
+    watch: {
+        msg: {
+            handler(msg) {
+                if (!msg || !msg.payload) return;
+                
+                console.log('📥 收到資料:', msg.payload);
+                
+                if (Array.isArray(msg.payload) && msg.payload.length > 0) {
+                    if (msg.payload[0].hasOwnProperty('device_id')) {
+                        this.allDevices = msg.payload;
+                        this.devicesLoading = false;
+                        console.log(`✅ 載入 ${this.allDevices.length} 個設備`);
+                    } else if (msg.payload[0].hasOwnProperty('customer_code')) {
+                        this.customers = msg.payload;
+                        console.log(`✅ 載入 ${this.customers.length} 個客戶`);
+                    }
+                } else if (Array.isArray(msg.payload) && msg.payload.length === 0) {
+                    if (this.devicesLoading) {
+                        this.allDevices = [];
+                        this.devicesLoading = false;
+                        console.log('ℹ️ 設備列表為空');
+                    }
+                }
+            },
+            deep: true
+        }
+    }
+}
+</script>

@@ -1,0 +1,609 @@
+<template>
+    <div class="solar-dash">
+        <!--頂部狀態列 -->
+        <div class="status-bar">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <!-- 🎨 LOGO 圖片（新增）-->
+                <img :src="logoBase64" alt="SOLARSDGS" style="width: 35px; height: 35px; border-radius: 6px; background: white; padding: 5px; box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);">
+
+                <!-- 返回管理員按鈕（僅管理員可見）-->
+                <button v-if="isAdmin" @click="backToAdmin"
+                        style="padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600;"
+                        onmouseover="this.style.background='#5568d3'"
+                        onmouseout="this.style.background='#667eea'">
+                    ← 管理員
+                </button>
+
+                <span class="status-dot" :class="{on: online}"></span>
+
+                <!-- 設備選擇器 -->
+                <select v-model="deviceId" @change="switchDevice"
+                        style="padding: 6px 10px; border-radius: 4px; border: 1px solid #ddd; font-weight: 600;">
+                    <option v-for="id in availableDevices" :key="id" :value="id">
+                        {{getDeviceDisplayName(id)}}
+                    </option>
+                </select>
+
+                <span style="opacity: 0.8;">{{online ? '🟢 在線' : '🔴 離線'}}</span>
+                <span v-if="loading" style="color: #f39c12; font-size: 12px;">
+                    ⏳ 載入中...
+                </span>
+            </div>
+
+            <!-- 用戶資訊與登出 -->
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <span style="background: #34495e; color: white; padding: 4px 10px; border-radius: 4px; font-size: 13px;">
+                    {{isAdmin ? '👨‍💼 管理員' : '👤 ' + customerName}}
+                </span>
+                <span style="opacity: 0.8;">{{lastUpdate}}</span>
+                <button @click="logout"
+                        style="padding: 6px 12px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;"
+                        onmouseover="this.style.background='#c0392b'"
+                        onmouseout="this.style.background='#e74c3c'">
+                    登出
+                </button>
+            </div>
+        </div>
+
+        <!-- 設備資訊卡片 -->
+        <div class="card" style="margin-bottom: 20px; background: #f8f9fa;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <div>
+                    <span style="color: #7f8c8d;">設備編號</span>
+                    <div style="font-size: 20px; font-weight: bold; color: #2c3e50;">{{deviceId}}</div>
+                </div>
+                <div>
+                    <span style="color: #7f8c8d;">設備名稱</span>
+                    <div style="font-size: 20px; font-weight: bold; color: #2c3e50;">{{deviceName}}</div>
+                </div>
+                <div>
+                    <span style="color: #7f8c8d;">位置</span>
+                    <div style="font-size: 20px; font-weight: bold; color: #2c3e50;">{{deviceLocation}}</div>
+                </div>
+                <div>
+                    <span style="color: #7f8c8d;">連線狀態</span>
+                    <div style="font-size: 20px; font-weight: bold; color: #2c3e50;">
+                        {{connectionStatus}}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 功率卡片 -->
+        <div class="metrics">
+            <div class="card">
+                <h3>PG 發電功率</h3>
+                <div class="val" style="color: #3498db;">{{pg}}</div>
+                <div>W</div>
+            </div>
+            <div class="card">
+                <h3>PA 負載A</h3>
+                <div class="val" style="color: #2ecc71;">{{pa}}</div>
+                <div>W</div>
+            </div>
+            <div class="card">
+                <h3>PP 負載P</h3>
+                <div class="val" style="color: #e74c3c;">{{pp}}</div>
+                <div>W</div>
+            </div>
+        </div>
+
+        <!-- 效率卡片 -->
+        <div class="eff">
+            <div class="card">
+                <h3>PAG 效率</h3>
+                <div class="val" style="color: #9b59b6;">{{pag.toFixed(2)}}%</div>
+                <div class="bar">
+                    <div class="fill" :style="{
+                        width: Math.max(0, Math.min(100, pag)) + '%',
+                        background: 'linear-gradient(90deg, #9b59b6, #8e44ad)'
+                    }"></div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>PPG 效率</h3>
+                <div class="val" style="color: #f39c12;">{{ppg.toFixed(2)}}%</div>
+                <div class="bar">
+                    <div class="fill" :style="{
+                        width: Math.max(0, Math.min(100, ppg)) + '%',
+                        background: 'linear-gradient(90deg, #f39c12, #e67e22)'
+                    }"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Factor 設定（需權限）-->
+        <div v-if="showControlPanel" class="card ctrl">
+            <h3>⚙️ Factor 設定</h3>
+            <div class="factors">
+                <div class="fac-wrap">
+                    <label>Factor_A</label>
+                    <div style="display: flex; gap: 5px; align-items: center;">
+                        <input type="number"
+                               v-model.number="fa"
+                               :disabled="!faUnlock"
+                               step="0.1"
+                               class="fac-input">
+                        <span @click="unlock('A')"
+                              style="cursor: pointer; font-size: 20px; padding: 5px;">
+                            {{faUnlock ? '🔓' : '🔒'}}
+                        </span>
+                    </div>
+                </div>
+                <div class="fac-wrap">
+                    <label>Factor_P</label>
+                    <div style="display: flex; gap: 5px; align-items: center;">
+                        <input type="number"
+                               v-model.number="fp"
+                               :disabled="!fpUnlock"
+                               step="0.1"
+                               class="fac-input">
+                        <span @click="unlock('P')"
+                              style="cursor: pointer; font-size: 20px; padding: 5px;">
+                            {{fpUnlock ? '🔓' : '🔒'}}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <p class="last-update">最後更新: {{lastConfigUpdate}}</p>
+        </div>
+
+        <!-- 控制按鈕（需權限）-->
+        <div v-if="showControlPanel" class="card ctrl">
+            <h3>🎮 設備控制</h3>
+            <div class="ctrl-buttons">
+                <button @click="sendReboot" class="ctrl-btn ctrl-btn-danger">
+                    🔄 重啟設備
+                </button>
+                <button @click="sendOTA" class="ctrl-btn ctrl-btn-warning">
+                    📦 OTA 更新
+                </button>
+                <button @click="requestGPS" class="ctrl-btn ctrl-btn-info">
+                    📍 請求 GPS
+                </button>
+                <button @click="refreshData" class="ctrl-btn ctrl-btn-info">
+                    🔃 刷新數據
+                </button>
+            </div>
+        </div>
+
+        <!-- 密碼對話框 -->
+        <div v-if="pwd" class="modal">
+            <div class="modal-content">
+                <h3>解鎖 Factor_{{pwdFor}}</h3>
+                <input type="password"
+                       v-model="pwdIn"
+                       placeholder="請輸入密碼"
+                       @keyup.enter="chkPwd"
+                       style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px;">
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button @click="pwd = false" class="ctrl-btn" style="background: #95a5a6;">
+                        取消
+                    </button>
+                    <button @click="chkPwd" class="ctrl-btn ctrl-btn-info">
+                        確認
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+    export default {
+    data() {
+        return {
+            // 🎨 在這裡貼上你的 LOGO Base64 字串
+            logoBase64: 'data:image/png;base64,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',
+            
+            deviceId: '6002',
+            deviceName: '設備 6002',
+            deviceLocation: '未設定',
+            connectionStatus: '檢查中',
+            pg: 0,
+            pa: 0,
+            pp: 0,
+            pag: 0,
+            ppg: 0,
+            online: false,
+            lastUpdate: '--:--',
+            loading: false,
+            currentCustomer: '',
+            customerName: '',
+            isAdmin: false,
+            availableDevices: [],
+            allDevices: ['6001', '6002', '6003', '6004', '6005', '6006'],
+            fa: 1.0,
+            fp: 1.0,
+            faUnlock: false,
+            fpUnlock: false,
+            pwd: false,
+            pwdIn: '',
+            pwdFor: '',
+            configLoaded: false,
+            lastConfigUpdate: '--:--',
+            configUpdateTimer: null,
+            isInitialized: false,
+            messageCount: 0,
+            deviceConfigs: {},
+            dataRefreshTimer: null,
+            unlockTimers: {}
+        }
+    },
+    
+    computed: {
+        showControlPanel() {
+            return this.isAdmin || this.deviceId.startsWith(this.currentCustomer);
+        }
+    },
+    
+    mounted() {
+        console.log('🚀 太陽能監控 Dashboard 初始化...');
+        
+        const customer = localStorage.getItem('solar_customer');
+        const loginTime = localStorage.getItem('solar_login_time');
+        const customerName = localStorage.getItem('solar_customer_name');
+        
+        if (!customer || !loginTime) {
+            console.log('❌ 未登入，跳轉到登入頁');
+            window.location.href = '/dashboard/login';
+            return;
+        }
+        
+        const elapsed = Date.now() - parseInt(loginTime);
+        if (elapsed > 8 * 60 * 60 * 1000) {
+            console.log('⏰ 登入已過期');
+            alert('登入已過期，請重新登入');
+            this.logout();
+            return;
+        }
+        
+        this.currentCustomer = customer;
+        this.customerName = customerName || '未知客戶';
+        this.isAdmin = (customer === 'admin');
+        
+        console.log(`🏢 客戶登入: ${this.customerName} (${customer})`);
+        console.log(`👤 權限: ${this.isAdmin ? '管理員' : '一般客戶'}`);
+        
+        if (this.isAdmin) {
+            this.availableDevices = [...this.allDevices];
+            console.log('👨‍💼 管理員模式：可查看所有設備');
+        } else {
+            this.availableDevices = this.allDevices.filter(d => 
+                d.startsWith(customer)
+            );
+            console.log(`🔐 客戶模式：只能查看 ${customer} 開頭的設備`);
+        }
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const deviceFromUrl = urlParams.get('device');
+        
+        if (deviceFromUrl && this.availableDevices.includes(deviceFromUrl)) {
+            this.deviceId = deviceFromUrl;
+            console.log('📱 從 URL 載入設備:', this.deviceId);
+        } else if (!this.availableDevices.includes(this.deviceId)) {
+            this.deviceId = this.availableDevices[0] || '6002';
+            console.log('📱 使用預設設備:', this.deviceId);
+        }
+        
+        this.initializeDevice();
+        
+        this.dataRefreshTimer = setInterval(() => {
+            this.refreshData();
+        }, 30000);
+        
+        setInterval(() => {
+            localStorage.setItem('solar_login_time', Date.now());
+            console.log('🔄 Session 已更新');
+        }, 30 * 60 * 1000);
+    },
+    
+    watch: {
+        msg: {
+            handler(msg) {
+                if (!msg || !msg.payload) return;
+                
+                const data = msg.payload;
+                this.messageCount++;
+                
+                console.log(`📥 [${this.messageCount}] 收到訊息:`, data.type || 'unknown', 
+                           'for device:', data.device_id || 'unknown');
+                
+                if (data.device_id && data.device_id !== this.deviceId) {
+                    console.log(`⏭️ 忽略其他設備 ${data.device_id} 的數據（當前: ${this.deviceId}）`);
+                    return;
+                }
+                
+                if (data.type === 'config') {
+                    this.handleConfigData(data);
+                    return;
+                }
+                
+                if (data.type === 'realtime') {
+                    this.handlePowerData(data);
+                    return;
+                }
+                
+                if (data.type === 'device_info') {
+                    this.handleDeviceInfo(data);
+                    return;
+                }
+            },
+            deep: true
+        },
+        
+        fa(newVal, oldVal) {
+            if (this.faUnlock && this.isInitialized && this.configLoaded) {
+                console.log(`📝 [${this.deviceId}] Factor_A 變更: ${oldVal} → ${newVal}`);
+                this.scheduleConfigUpdate();
+            }
+        },
+        
+        fp(newVal, oldVal) {
+            if (this.fpUnlock && this.isInitialized && this.configLoaded) {
+                console.log(`📝 [${this.deviceId}] Factor_P 變更: ${oldVal} → ${newVal}`);
+                this.scheduleConfigUpdate();
+            }
+        }
+    },
+    
+    methods: {
+        backToAdmin() {
+            console.log('🔙 返回管理員頁面');
+            window.location.href = '/dashboard/admin';
+        },
+        
+        logout() {
+            if (confirm('確定要登出嗎？')) {
+                localStorage.removeItem('solar_customer');
+                localStorage.removeItem('solar_customer_name');
+                localStorage.removeItem('solar_devices');
+                localStorage.removeItem('solar_login_time');
+                localStorage.removeItem('solar_is_admin');
+                window.location.href = '/dashboard/login';
+            }
+        },
+        
+        initializeDevice() {
+            console.log(`🎯 初始化設備 ${this.deviceId}`);
+            this.resetData();
+            this.loadConfig();
+            this.loadLatestData();
+            this.loadDeviceInfo();
+            setTimeout(() => {
+                this.isInitialized = true;
+                console.log(`✅ 設備 ${this.deviceId} 初始化完成`);
+            }, 2000);
+        },
+        
+        updateUrl() {
+            const newUrl = new URL(window.location);
+            newUrl.searchParams.set('device', this.deviceId);
+            window.history.pushState({}, '', newUrl);
+        },
+        
+        getDeviceDisplayName(id) {
+            return `設備 ${id}`;
+        },
+        
+        switchDevice() {
+            console.log(`🔄 切換設備: ${this.deviceId}`);
+            this.updateUrl();
+            this.initializeDevice();
+        },
+        
+        resetData() {
+            this.pg = 0;
+            this.pa = 0;
+            this.pp = 0;
+            this.pag = 0;
+            this.ppg = 0;
+            this.online = false;
+            this.lastUpdate = '--:--';
+            this.configLoaded = false;
+            this.faUnlock = false;
+            this.fpUnlock = false;
+            
+            if (this.unlockTimers) {
+                if (this.unlockTimers.A) clearTimeout(this.unlockTimers.A);
+                if (this.unlockTimers.P) clearTimeout(this.unlockTimers.P);
+            }
+        },
+        
+        loadConfig() {
+            if (this.deviceConfigs[this.deviceId]) {
+                const cached = this.deviceConfigs[this.deviceId];
+                console.log(`📦 使用快取配置 ${this.deviceId}:`, cached);
+                this.fa = cached.fa;
+                this.fp = cached.fp;
+                this.configLoaded = true;
+            } else {
+                this.fa = 1.0;
+                this.fp = 1.0;
+            }
+            
+            console.log(`🔄 請求載入設備 ${this.deviceId} 的配置`);
+            this.send({
+                payload: {
+                    action: 'get_config',
+                    deviceId: this.deviceId,
+                    device_id: this.deviceId
+                }
+            });
+        },
+        
+        loadLatestData() {
+            console.log(`📊 請求設備 ${this.deviceId} 的最新數據`);
+            this.send({
+                payload: {
+                    action: 'get_latest',
+                    deviceId: this.deviceId,
+                    device_id: this.deviceId
+                }
+            });
+        },
+        
+        loadDeviceInfo() {
+            console.log(`ℹ️ 請求設備 ${this.deviceId} 的資訊`);
+            this.send({
+                payload: {
+                    action: 'get_device_info',
+                    deviceId: this.deviceId,
+                    device_id: this.deviceId
+                }
+            });
+        },
+        
+        refreshData() {
+            console.log(`🔄 刷新設備 ${this.deviceId} 的數據`);
+            this.loadLatestData();
+        },
+        
+        handleConfigData(data) {
+            console.log(`⚙️ [${this.deviceId}] 收到配置:`, data);
+            this.fa = data.factor_a || 1.0;
+            this.fp = data.factor_p || 1.0;
+            this.configLoaded = true;
+            
+            this.deviceConfigs[this.deviceId] = {
+                fa: this.fa,
+                fp: this.fp
+            };
+            
+            this.lastConfigUpdate = new Date().toLocaleTimeString('zh-TW');
+        },
+        
+        handlePowerData(data) {
+            console.log(`📊 [${this.deviceId}] 收到功率數據:`, data);
+            this.pg = data.pg || 0;
+            this.pa = data.pa || 0;
+            this.pp = data.pp || 0;
+            this.pag = data.pag || 0;
+            this.ppg = data.ppg || 0;
+            this.online = data.online !== false;
+            this.lastUpdate = data.lastUpdate || new Date().toLocaleTimeString('zh-TW');
+            this.connectionStatus = this.online ? '✅ 連線正常' : '❌ 連線中斷';
+        },
+        
+        handleDeviceInfo(data) {
+            this.deviceName = data.device_name || `設備 ${this.deviceId}`;
+            this.deviceLocation = data.location || '未設定位置';
+            console.log(`ℹ️ [${this.deviceId}] 設備資訊已更新`);
+        },
+        
+        scheduleConfigUpdate() {
+            if (!this.configLoaded || !this.isInitialized) {
+                console.log('⚠️ 系統未就緒');
+                return;
+            }
+            
+            clearTimeout(this.configUpdateTimer);
+            
+            this.configUpdateTimer = setTimeout(() => {
+                console.log(`🔧 發送設備 ${this.deviceId} 的配置更新`);
+                
+                this.send({
+                    payload: {
+                        action: 'update_config',
+                        deviceId: this.deviceId,
+                        device_id: this.deviceId,
+                        factor_a: this.fa,
+                        factor_p: this.fp
+                    }
+                });
+                
+                this.deviceConfigs[this.deviceId] = {
+                    fa: this.fa,
+                    fp: this.fp
+                };
+                
+                this.lastConfigUpdate = new Date().toLocaleTimeString('zh-TW');
+            }, 1000);
+        },
+        
+        sendReboot() {
+            if (!confirm(`確定要重啟設備 ${this.deviceId} 嗎？`)) return;
+            
+            console.log(`🔄 發送重啟指令到設備 ${this.deviceId}`);
+            this.send({
+                payload: {
+                    action: 'reboot',
+                    deviceId: this.deviceId,
+                    device_id: this.deviceId
+                }
+            });
+        },
+        
+        sendOTA() {
+            if (!confirm(`確定要對設備 ${this.deviceId} 執行 OTA 更新嗎？`)) return;
+            
+            console.log(`📡 發送 OTA 指令到設備 ${this.deviceId}`);
+            this.send({
+                payload: {
+                    action: 'ota',
+                    deviceId: this.deviceId,
+                    device_id: this.deviceId
+                }
+            });
+        },
+        
+        requestGPS() {
+            console.log(`📍 請求設備 ${this.deviceId} 的 GPS 定位`);
+            this.send({
+                payload: {
+                    action: 'request_gps',
+                    deviceId: this.deviceId,
+                    device_id: this.deviceId
+                }
+            });
+        },
+        
+        unlock(type) {
+            this.pwdFor = type;
+            this.pwd = true;
+            this.pwdIn = '';
+        },
+        
+        chkPwd() {
+            if (this.pwdIn === '82767419') {
+                console.log(`✅ 解鎖設備 ${this.deviceId} 的 Factor_${this.pwdFor}`);
+                
+                if (!this.unlockTimers) this.unlockTimers = {};
+                
+                if (this.unlockTimers[this.pwdFor]) {
+                    clearTimeout(this.unlockTimers[this.pwdFor]);
+                }
+                
+                if (this.pwdFor === 'A') {
+                    this.faUnlock = true;
+                    this.unlockTimers.A = setTimeout(() => {
+                        this.faUnlock = false;
+                        console.log(`🔒 設備 ${this.deviceId} Factor_A 已自動鎖定`);
+                    }, 30000);
+                } else if (this.pwdFor === 'P') {
+                    this.fpUnlock = true;
+                    this.unlockTimers.P = setTimeout(() => {
+                        this.fpUnlock = false;
+                        console.log(`🔒 設備 ${this.deviceId} Factor_P 已自動鎖定`);
+                    }, 30000);
+                }
+                
+                this.pwd = false;
+                this.pwdIn = '';
+            } else {
+                alert('❌ 密碼錯誤！');
+                this.pwdIn = '';
+            }
+        }
+    },
+    
+    beforeUnmount() {
+        clearTimeout(this.configUpdateTimer);
+        clearInterval(this.dataRefreshTimer);
+        if (this.unlockTimers) {
+            if (this.unlockTimers.A) clearTimeout(this.unlockTimers.A);
+            if (this.unlockTimers.P) clearTimeout(this.unlockTimers.P);
+        }
+    }
+}
+</script>

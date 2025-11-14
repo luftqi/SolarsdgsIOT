@@ -1,0 +1,446 @@
+/* ================================================================
+   SOLARSDGS 登入頁面樣式表
+   品牌色系：金黃 (#FFD700 / #FFC107 / #FFB300) + 深藍黑 (#2c3e50)
+   ================================================================ */
+
+/* 🎨 全局樣式覆蓋（強制淺色模式） */
+:root {
+    --primary-gold: #FFC107;
+    --primary-gold-light: #FFD700;
+    --primary-gold-dark: #FFB300;
+    --dark-blue: #2c3e50;
+    --dark-blue-light: #34495e;
+    --success-green: #4CAF50;
+    --warning-orange: #f39c12;
+    --danger-red: #e74c3c;
+    --text-dark: #2c3e50;
+    --text-light: #7f8c8d;
+    --bg-light: #f5f6fa;
+}
+
+/* 強制淺色模式 */
+.login-wrapper,
+.login-wrapper * {
+    color-scheme: light !important;
+}
+
+/* 基礎重置 */
+.login-wrapper * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* ================================================================
+   外層容器 - 深色漸層背景
+   ================================================================ */
+.login-wrapper {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, var(--dark-blue) 0%, var(--dark-blue-light) 100%);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* 背景動畫光暈 */
+.login-wrapper::before {
+    content: '';
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, var(--primary-gold) 0%, transparent 70%);
+    opacity: 0.1;
+    top: -250px;
+    right: -250px;
+    animation: pulse 4s ease-in-out infinite;
+}
+
+.login-wrapper::after {
+    content: '';
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, var(--primary-gold-light) 0%, transparent 70%);
+    opacity: 0.08;
+    bottom: -200px;
+    left: -200px;
+    animation: pulse 5s ease-in-out infinite reverse;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.1;
+    }
+
+    50% {
+        transform: scale(1.1);
+        opacity: 0.15;
+    }
+}
+
+/* ================================================================
+   登入卡片 - 白色卡片 + 陰影
+   ================================================================ */
+.login-card {
+    width: 100%;
+    max-width: 420px;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    animation: slideIn 0.4s ease-out;
+    position: relative;
+    z-index: 1;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ================================================================
+   頂部 Header - 深色背景 + 金黃點綴
+   ================================================================ */
+.login-header {
+    text-align: center;
+    padding: 40px 20px 30px;
+    background: linear-gradient(135deg, var(--dark-blue) 0%, var(--dark-blue-light) 100%);
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Header 光暈效果 */
+.login-header::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: 50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, var(--primary-gold) 0%, transparent 50%);
+    opacity: 0.1;
+    transform: translateX(-50%);
+}
+
+/* LOGO 圖片樣式 */
+.brand-logo {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 15px;
+    display: block;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(255, 193, 7, 0.3);
+    background: white;
+    padding: 10px;
+    animation: logoGlow 3s ease-in-out infinite;
+}
+
+@keyframes logoGlow {
+
+    0%,
+    100% {
+        box-shadow: 0 8px 24px rgba(255, 193, 7, 0.3);
+    }
+
+    50% {
+        box-shadow: 0 8px 32px rgba(255, 193, 7, 0.5);
+    }
+}
+
+/* 標題樣式 */
+.login-header h1 {
+    font-size: 28px;
+    margin-bottom: 8px;
+    font-weight: 700;
+    color: var(--primary-gold);
+    text-shadow: 0 2px 10px rgba(255, 193, 7, 0.3);
+    position: relative;
+    z-index: 1;
+}
+
+.login-header p {
+    font-size: 13px;
+    opacity: 0.85;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 400;
+    position: relative;
+    z-index: 1;
+}
+
+/* ================================================================
+   登入類型切換 Tab
+   ================================================================ */
+.login-type-tabs {
+    display: flex;
+    margin: 20px 20px 0;
+    background: var(--bg-light);
+    border-radius: 12px;
+    padding: 5px;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    background: transparent;
+    color: var(--text-light);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.tab-btn:hover:not(.active) {
+    color: var(--text-dark);
+    background: rgba(255, 193, 7, 0.1);
+}
+
+.tab-btn.active {
+    background: linear-gradient(135deg, var(--primary-gold) 0%, var(--primary-gold-dark) 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+}
+
+/* ================================================================
+   登入表單區域
+   ================================================================ */
+.login-body {
+    padding: 30px 25px;
+}
+
+/* 表單群組 */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-dark);
+    font-weight: 600;
+    font-size: 14px;
+}
+
+/* 輸入框 */
+.form-control {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid #e1e8ed;
+    border-radius: 10px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    background: white;
+    color: var(--text-dark);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary-gold);
+    box-shadow: 0 0 0 4px rgba(255, 193, 7, 0.1);
+}
+
+.form-control::placeholder {
+    color: #bdc3c7;
+}
+
+/* ================================================================
+   登入按鈕 - 金黃色漸層
+   ================================================================ */
+.login-btn {
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--primary-gold-light) 0%, var(--primary-gold) 50%, var(--primary-gold-dark) 100%);
+    color: white;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    margin-top: 10px;
+}
+
+.login-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 193, 7, 0.4);
+}
+
+.login-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.login-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* 管理員按鈕 - 紅色 */
+.admin-btn {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+}
+
+.admin-btn:hover:not(:disabled) {
+    box-shadow: 0 8px 25px rgba(231, 76, 60, 0.4);
+}
+
+/* ================================================================
+   錯誤訊息
+   ================================================================ */
+.error-msg {
+    margin-top: 20px;
+    padding: 14px 16px;
+    background: linear-gradient(135deg, #fee 0%, #fdd 100%);
+    color: var(--danger-red);
+    border-radius: 10px;
+    font-size: 14px;
+    text-align: center;
+    font-weight: 500;
+    border-left: 4px solid var(--danger-red);
+    animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-5px);
+    }
+
+    75% {
+        transform: translateX(5px);
+    }
+}
+
+/* ================================================================
+   測試提示框
+   ================================================================ */
+.hint-box {
+    margin-top: 20px;
+    padding: 14px 16px;
+    background: linear-gradient(135deg, #e8f4fd 0%, #d1e7f7 100%);
+    border-radius: 10px;
+    color: #0066cc;
+    font-size: 12px;
+    line-height: 1.8;
+    border-left: 4px solid var(--primary-gold);
+}
+
+/* ================================================================
+   頁尾
+   ================================================================ */
+.login-footer {
+    padding: 20px;
+    text-align: center;
+    color: var(--text-light);
+    background: var(--bg-light);
+    font-size: 12px;
+}
+
+/* ================================================================
+   響應式設計 - 手機優化
+   ================================================================ */
+@media (max-width: 480px) {
+    .login-card {
+        border-radius: 0;
+        max-width: 100%;
+    }
+
+    .login-header {
+        padding: 30px 20px 25px;
+    }
+
+    .login-header h1 {
+        font-size: 24px;
+    }
+
+    .brand-logo {
+        width: 70px;
+        height: 70px;
+    }
+
+    .login-body {
+        padding: 25px 20px;
+    }
+
+    .form-control {
+        font-size: 16px;
+        /* 防止 iOS 自動縮放 */
+    }
+
+    .login-btn {
+        padding: 14px;
+        font-size: 15px;
+    }
+}
+
+@media (max-width: 360px) {
+    .login-header h1 {
+        font-size: 22px;
+    }
+
+    .brand-logo {
+        width: 60px;
+        height: 60px;
+    }
+
+    .tab-btn {
+        font-size: 13px;
+        padding: 10px;
+    }
+}
+
+/* ================================================================
+   暗黑模式覆蓋（強制停用）
+   ================================================================ */
+@media (prefers-color-scheme: dark) {
+
+    .login-wrapper,
+    .login-card,
+    .form-control {
+        background: white !important;
+        color: var(--text-dark) !important;
+    }
+}
+
+/* ================================================================
+   載入動畫
+   ================================================================ */
+.login-btn:disabled::after {
+    content: '⏳';
+    margin-left: 8px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
