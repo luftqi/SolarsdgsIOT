@@ -35,16 +35,9 @@ export function createApp(): Application {
   // ============================
 
   // Helmet - 設置安全相關的 HTTP headers
+  // 暫時禁用 CSP 以排除干擾
   app.use(helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
-        imgSrc: ["'self'", 'data:', 'https:'],
-        connectSrc: ["'self'"],  // 允許 fetch/XHR 到同源
-      },
-    },
+    contentSecurityPolicy: false,  // 完全禁用 CSP
   }));
 
   // CORS - 允許跨域請求
