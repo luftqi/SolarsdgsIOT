@@ -171,7 +171,7 @@
         // 從資料庫查詢數據
         async function fetchData() {
             try {
-                const response = await fetch(`${API_BASE}/api/power-data/${DEVICE_ID}/latest/100`);
+                const response = await fetch(`${API_BASE}/api/power-data/device/${DEVICE_ID}/latest?limit=100`);
                 const result = await response.json();
 
                 if (!result.success) {
@@ -179,9 +179,14 @@
                     return;
                 }
 
-                const data = result.data;
-                updateCards(data[data.length - 1]); // 最新數據
-                updateCharts(data); // 更新圖表
+                const records = result.data.records;
+                if (!records || records.length === 0) {
+                    console.warn('無數據');
+                    return;
+                }
+
+                updateCards(records[0]); // 最新數據（第一筆）
+                updateCharts(records); // 更新圖表
             } catch (error) {
                 console.error('獲取數據失敗:', error);
             }
@@ -193,8 +198,8 @@
             document.getElementById('pgValue').innerHTML = `${latest.pg}<span class="card-unit">W</span>`;
             document.getElementById('paValue').innerHTML = `${latest.pa}<span class="card-unit">W</span>`;
             document.getElementById('ppValue').innerHTML = `${latest.pp}<span class="card-unit">W</span>`;
-            document.getElementById('pagValue').innerHTML = `${latest.pag ? latest.pag.toFixed(2) : '0.00'}<span class="card-unit">%</span>`;
-            document.getElementById('ppgValue').innerHTML = `${latest.ppg ? latest.ppg.toFixed(2) : '0.00'}<span class="card-unit">%</span>`;
+            document.getElementById('pagValue').innerHTML = `${latest.pga_efficiency ? parseFloat(latest.pga_efficiency).toFixed(2) : '0.00'}<span class="card-unit">%</span>`;
+            document.getElementById('ppgValue').innerHTML = `${latest.pgp_efficiency ? parseFloat(latest.pgp_efficiency).toFixed(2) : '0.00'}<span class="card-unit">%</span>`;
         }
 
         // 更新圖表
@@ -207,8 +212,8 @@
                 powerData.PG.push({ x: time, y: item.pg });
                 powerData.PA.push({ x: time, y: item.pa });
                 powerData.PP.push({ x: time, y: item.pp });
-                effData.PAG.push({ x: time, y: item.pag || 0 });
-                effData.PPG.push({ x: time, y: item.ppg || 0 });
+                effData.PAG.push({ x: time, y: parseFloat(item.pga_efficiency) || 0 });
+                effData.PPG.push({ x: time, y: parseFloat(item.pgp_efficiency) || 0 });
             });
 
             powerChart.data.datasets[0].data = powerData.PG;
