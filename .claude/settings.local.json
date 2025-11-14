@@ -85,7 +85,8 @@
       "Bash(sshpass -p 'GRtY^hg7SdW' ssh -o StrictHostKeyChecking=no root@72.61.117.219 \"mkdir -p ~/.ssh && echo ''ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO5Brkjh+ipEJkNRiwSH6GS5D4ySSyyvOk4u0TM+4Tgd wg.444.444.444@gmail.com'' >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys && echo ''✅ SSH 金鑰配置完成''\")",
       "Bash(timeout 5 ssh -o BatchMode=yes -o ConnectTimeout=3 root@72.61.117.219 \"echo ''SSH 無密碼連接成功!''\")",
       "Bash(pkill:*)",
-      "Bash(jq:*)"
+      "Bash(jq:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

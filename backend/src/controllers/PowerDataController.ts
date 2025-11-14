@@ -72,32 +72,28 @@ export class PowerDataController {
    */
   getList = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { deviceId } = req.params;
+      const { deviceId, limit: paramLimit } = req.params;
       const {
-        limit = 100,
         startDate,
         endDate,
         latest
       } = req.query;
 
-      this.logger.info(`Getting power data list for device: ${deviceId}`);
+      // 優先使用 URL path 中的 limit，其次是 query 中的 latest，最後預設 100
+      const limitNum = paramLimit ? parseInt(paramLimit) : (latest ? parseInt(latest as string) : 100);
+
+      this.logger.info(`Getting power data list for device: ${deviceId}, limit: ${limitNum}`);
 
       let data: any[] = [];
 
-      // 如果指定 latest，只取最新 N 筆
-      if (latest) {
-        const latestCount = parseInt(latest as string);
-        data = await this.powerDataRepo.getLatestData(deviceId, latestCount);
-      }
       // 如果指定時間範圍
-      else if (startDate && endDate) {
+      if (startDate && endDate) {
         const start = new Date(startDate as string);
         const end = new Date(endDate as string);
         data = await this.powerDataRepo.getDataByTimeRange(deviceId, start, end);
       }
-      // 否則使用預設查詢（最新 100 筆）
+      // 否則使用 limit 查詢
       else {
-        const limitNum = parseInt(limit as string);
         data = await this.powerDataRepo.getLatestData(deviceId, limitNum);
       }
 

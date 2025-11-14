@@ -14,17 +14,17 @@ export function createPowerDataRoutes(): Router {
   const powerDataRepo = new PowerDataRepository(pool);
   const controller = new PowerDataController(powerDataRepo);
 
-  // GET /api/devices/:deviceId/power-data/latest - 最新一筆數據
-  router.get('/:deviceId/power-data/latest', controller.getLatest);
+  // GET /api/power-data/:deviceId/latest/:limit - 最新 N 筆數據
+  router.get('/:deviceId/latest/:limit', controller.getList);
 
-  // GET /api/devices/:deviceId/power-data/chart - 圖表數據
-  router.get('/:deviceId/power-data/chart', controller.getChartData);
+  // GET /api/power-data/:deviceId/latest - 最新一筆數據
+  router.get('/:deviceId/latest', controller.getLatest);
 
-  // GET /api/devices/:deviceId/power-data/statistics - 統計數據
-  router.get('/:deviceId/power-data/statistics', controller.getStatistics);
+  // GET /api/power-data/:deviceId/chart - 圖表數據
+  router.get('/:deviceId/chart', controller.getChartData);
 
-  // GET /api/devices/:deviceId/power-data - 數據列表（分頁、時間範圍）
-  router.get('/:deviceId/power-data', controller.getList);
+  // GET /api/power-data/:deviceId/statistics - 統計數據
+  router.get('/:deviceId/statistics', controller.getStatistics);
 
   return router;
 }
