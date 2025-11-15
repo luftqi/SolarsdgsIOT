@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebSocket 即時推送測試</title>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2 px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #0094CE;
+      margin-bottom: 20px;
+    }
+    .status {
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+    .status.connected {
+      background: #d4edda;
+      color: #155724;
+    }
+    .status.disconnected {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    .controls {
+      margin-bottom: 20px;
+    }
+    button {
+      background: #0094CE;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover {
+      background: #007bb5;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .data-display {
+      margin-top: 20px;
+    }
+    .power-card {
+      display: inline-block;
+      background: #f8f9fa;
+      border-left: 4px solid #0094CE;
+      padding: 15px;
+      margin: 10px;
+      border-radius: 4px;
+      min-width: 150px;
+    }
+    .power-card h3 {
+      margin: 0 0 10px 0;
+      color: #666;
+      font-size: 14px;
+    }
+    .power-card .value {
+      font-size: 28px;
+      font-weight: bold;
+      color: #333;
+    }
+    .power-card .unit {
+      font-size: 14px;
+      color: #666;
+    }
+    .log {
+      background: #2d2d2d;
+      color: #0f0;
+      padding: 15px;
+      border-radius: 4px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      margin-top: 20px;
+    }
+    .log-entry {
+      margin-bottom: 5px;
+    }
+    .log-time {
+      color: #888;
+    }
+    .log-info {
+      color: #0f0;
+    }
+    .log-error {
+      color: #f00;
+    }
+    .log-warn {
+      color: #ff0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔌 WebSocket 即時推送測試 - Phase 2.2</h1>
+
+    <div id="status" class="status disconnected">
+      ❌ 未連接
+    </div>
+
+    <div class="controls">
+      <button id="connectBtn" onclick="connect()">連接 WebSocket</button>
+      <button id="disconnectBtn" onclick="disconnect()" disabled>斷開連接</button>
+      <button onclick="clearLogs()">清除日誌</button>
+    </div>
+
+    <div class="data-display">
+      <h2>設備 6001 - 即時數據</h2>
+      <div class="power-card">
+        <h3>發電功率 (PG)</h3>
+        <div class="value"><span id="pg">--</span> <span class="unit">W</span></div>
+      </div>
+      <div class="power-card">
+        <h3>負載A功率 (PA)</h3>
+        <div class="value"><span id="pa">--</span> <span class="unit">W</span></div>
+      </div>
+      <div class="power-card">
+        <h3>負載P功率 (PP)</h3>
+        <div class="value"><span id="pp">--</span> <span class="unit">W</span></div>
+      </div>
+      <div class="power-card">
+        <h3>PAG效率</h3>
+        <div class="value"><span id="pag">--</span> <span class="unit">%</span></div>
+      </div>
+      <div class="power-card">
+        <h3>PPG效率</h3>
+        <div class="value"><span id="ppg">--</span> <span class="unit">%</span></div>
+      </div>
+      <div class="power-card">
+        <h3>最後更新</h3>
+        <div class="value" style="font-size: 14px"><span id="lastUpdate">--</span></div>
+      </div>
+    </div>
+
+    <div class="log" id="log"></div>
+  </div>
+
+  <script>
+    let socket = null;
+    const WS_URL = 'http://72.61.117.219:3000';
+    const DEVICE_ID = '6001';
+
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('log');
+      const time = new Date().toLocaleTimeString('zh-TW');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-${type}">${message}</span>`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function updateStatus(connected) {
+      const status = document.getElementById('status');
+      const connectBtn = document.getElementById('connectBtn');
+      const disconnectBtn = document.getElementById('disconnectBtn');
+
+      if (connected) {
+        status.className = 'status connected';
+        status.textContent = '✅ 已連接到 WebSocket 服務器';
+        connectBtn.disabled = true;
+        disconnectBtn.disabled = false;
+      } else {
+        status.className = 'status disconnected';
+        status.textContent = '❌ 未連接';
+        connectBtn.disabled = false;
+        disconnectBtn.disabled = true;
+      }
+    }
+
+    function connect() {
+      log(`正在連接到: ${WS_URL}`);
+
+      socket = io(WS_URL, {
+        transports: ['websocket', 'polling']
+      });
+
+      socket.on('connect', () => {
+        log('✅ WebSocket 連接成功', 'info');
+        updateStatus(true);
+
+        // 加入設備房間
+        log(`發送 join_device: ${DEVICE_ID}`, 'info');
+        socket.emit('join_device', DEVICE_ID);
+      });
+
+      socket.on('disconnect', (reason) => {
+        log(`❌ WebSocket 斷開連接: ${reason}`, 'error');
+        updateStatus(false);
+      });
+
+      socket.on('device_status', (data) => {
+        log(`📡 設備狀態: ${JSON.stringify(data)}`, 'info');
+      });
+
+      socket.on('realtime_data', (data) => {
+        log(`📊 收到即時數據: PG=${data.pg}W PA=${data.pa}W PP=${data.pp}W`, 'info');
+
+        // 更新顯示
+        document.getElementById('pg').textContent = data.pg || '--';
+        document.getElementById('pa').textContent = data.pa || '--';
+        document.getElementById('pp').textContent = data.pp || '--';
+        document.getElementById('pag').textContent = data.pag !== undefined ? data.pag.toFixed(2) : '--';
+        document.getElementById('ppg').textContent = data.ppg !== undefined ? data.ppg.toFixed(2) : '--';
+        document.getElementById('lastUpdate').textContent = data.lastUpdate || '--';
+      });
+
+      socket.on('error', (error) => {
+        log(`⚠️ WebSocket 錯誤: ${JSON.stringify(error)}`, 'error');
+      });
+
+      socket.on('ping', () => {
+        log('💓 收到心跳 ping', 'info');
+        socket.emit('pong');
+      });
+    }
+
+    function disconnect() {
+      if (socket) {
+        log('正在斷開連接...', 'warn');
+        socket.emit('leave_device', DEVICE_ID);
+        socket.disconnect();
+        socket = null;
+        updateStatus(false);
+      }
+    }
+
+    function clearLogs() {
+      document.getElementById('log').innerHTML = '';
+    }
+
+    // 自動連接
+    window.addEventListener('load', () => {
+      log('WebSocket 測試客戶端已載入');
+      log('點擊「連接 WebSocket」按鈕開始測試');
+    });
+  </script>
+</body>
+</html>
