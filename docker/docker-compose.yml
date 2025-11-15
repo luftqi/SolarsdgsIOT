@@ -106,7 +106,7 @@ services:
       context: ../frontend
       dockerfile: ../docker/frontend/Dockerfile
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://api.solarsdgs.online}
+        VITE_API_URL: ${VITE_API_URL:-https://api.solarsdgs.online}
         VITE_WS_URL: ${VITE_WS_URL:-https://api.solarsdgs.online}
     container_name: solarsdgs-frontend
     restart: unless-stopped
