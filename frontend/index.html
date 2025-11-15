@@ -4,10 +4,57 @@
     <meta charset="UTF-8">
     <link rel="icon" type="image/png" href="/favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="即時監控太陽能發電系統的功率與效率">
+    <meta name="theme-color" content="#0094CE">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SolarSDGs">
+
+    <!-- Manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png">
+
     <title>SolarSDGs IoT - 太陽能監控系統</title>
   </head>
   <body>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
+
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('✅ Service Worker registered:', registration.scope)
+
+              // 檢查更新
+              registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing
+                console.log('🔄 Service Worker update found')
+
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // 新版本可用，提示用戶刷新
+                    if (confirm('新版本可用，是否立即更新？')) {
+                      newWorker.postMessage({ type: 'SKIP_WAITING' })
+                      window.location.reload()
+                    }
+                  }
+                })
+              })
+            })
+            .catch((error) => {
+              console.error('❌ Service Worker registration failed:', error)
+            })
+        })
+      }
+    </script>
   </body>
 </html>

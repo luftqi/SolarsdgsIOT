@@ -86,7 +86,13 @@
       "Bash(timeout 5 ssh -o BatchMode=yes -o ConnectTimeout=3 root@72.61.117.219 \"echo ''SSH 無密碼連接成功!''\")",
       "Bash(pkill:*)",
       "Bash(jq:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(flows_analysis_report.md)",
+      "Bash(chcp 65001)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjdXN0b21lcklkIjoxLCJjdXN0b21lckNvZGUiOiJhZG1pbiIsImN1c3RvbWVyTmFtZSI6IkFkbWluaXN0cmF0b3IiLCJkZXZpY2VzIjpbIjYwMDEiXSwiaWF0IjoxNzYzMjIxMjU1LCJleHAiOjE3NjM4MjYwNTV9.EZJfIIIhVPFeYZePtC2uIbOqfOoXUdN-Dt0kMi7vDWU\")",
+      "Bash(__NEW_LINE__ curl -X POST http://72.61.117.219:3000/api/auth/verify )",
+      "Bash(__NEW_LINE__ curl -X POST http://72.61.117.219:3000/api/auth/refresh )",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

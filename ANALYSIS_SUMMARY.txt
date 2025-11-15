@@ -1,0 +1,230 @@
+================================================================================
+Node-RED flows.json 分析完成報告
+================================================================================
+
+分析日期: 2025-11-14
+檔案大小: 372.4KB (2650 lines)
+分析工具: Claude Code + Python
+
+================================================================================
+生成的文件清單
+================================================================================
+
+1. flows_analysis_report.md (195KB, 5977 lines)
+   - 完整的技術報告
+   - 包含所有 37 個 Function 節點的完整程式碼
+   - 所有 UI 組件配置
+   - MQTT/PostgreSQL 配置
+
+2. NODERED_ANALYSIS_COMPLETE.md (36KB)
+   - 結構化的分析報告
+   - 功能對照表
+   - Vue 3 遷移建議
+   - 資料庫 Schema
+   - API 端點設計
+
+3. QUICK_REFERENCE_MIGRATION.md
+   - 快速參考手冊
+   - 5-10 分鐘快速實作範本
+   - 程式碼範例 (複製即用)
+   - 套件安裝清單
+
+4. analyze_flows.py
+   - Python 分析腳本
+   - 可重複執行
+   - 用於未來更新 flows.json 時重新分析
+
+================================================================================
+關鍵發現
+================================================================================
+
+應用架構:
+- 總節點數量: 121
+- Function 節點: 37 個 (已提取完整程式碼)
+- 頁面數量: 3 (Login, Dashboard, Admin)
+- UI 組件: 13 個 (template 6 + chart 5 + iframe 1 + worldmap 1)
+- MQTT Topics: 2 (data, gps)
+- HTTP 端點: 8 (PWA 資源)
+
+功能模組:
+1. 登入認證系統 (4 個 Function)
+2. 數據解析器 (2 個 Function: 數據 + GPS)
+3. SQL 生成器 (9 個 Function)
+4. UI 格式化 (3 個 Function)
+5. 配置同步 (6 個 Function)
+6. PWA 功能 (2 個 Function)
+7. 其他功能 (11 個 Function)
+
+資料庫需求:
+- 已實作: 6 個資料表 (Phase 1)
+  - power_data
+  - gps_locations
+  - device_configs
+  - device_status
+  - power_statistics
+  - device_logs
+
+- 缺少: 1 個資料表 (需新增)
+  - customers (登入認證用)
+
+MQTT 架構:
+- Broker: mqtt (Docker service)
+- Port: 1883 (TCP), 9001 (WebSocket)
+- Subscribe Topics:
+  - solar/+/data (功率數據)
+  - solar/+/gps (GPS 位置)
+- Publish Topics:
+  - solar/{device_id}/ack
+  - solar/{device_id}/control
+  - solar/{device_id}/config
+  - solar/{device_id}/status
+
+================================================================================
+Node-RED → Node.js 遷移狀態
+================================================================================
+
+Phase 1 (已完成 ✅):
+✅ MqttService (MQTT 連接管理)
+✅ DataParser (240 lines, 100% 對等)
+✅ GpsParser (130 lines, 100% 對等)
+✅ DatabaseService (Connection Pool)
+✅ PowerDataRepository (UPSERT, 230 lines)
+✅ GpsLocationRepository (110 lines)
+✅ IoT 模擬器 (500+ lines)
+
+Phase 2.1 (下一步 ⏳):
+⏳ AuthService (登入驗證)
+⏳ CustomerService (客戶 CRUD)
+⏳ CustomerRepository
+⏳ /api/auth/* 路由
+⏳ /api/customers/* 路由
+⏳ JWT Token 中間件
+⏳ bcrypt 密碼加密
+
+Phase 2.2 (待開發 ⏳):
+⏳ WebSocketService (Socket.io)
+⏳ UiFormatter (即時數據格式化)
+⏳ MQTT → WebSocket 橋接
+
+Phase 3 (前端 ⏳):
+⏳ LoginView.vue
+⏳ DashboardView.vue
+⏳ CustomerManageView.vue
+⏳ PowerCard.vue (5 個)
+⏳ PowerChart.vue (Chart.js)
+⏳ GpsMap.vue (Leaflet)
+⏳ useAuth.ts, usePowerData.ts, useWebSocket.ts
+
+Phase 4 (PWA + 部署 ⏳):
+⏳ Vite PWA 插件配置
+⏳ manifest.json
+⏳ Service Worker
+⏳ PWA 圖標 (從 Base64 Logo)
+
+================================================================================
+關鍵改進建議
+================================================================================
+
+安全性:
+⚠️ CRITICAL: 密碼目前是明文儲存，必須改用 bcrypt
+✅ 實作 JWT Token 認證
+✅ 添加 HTTPS (Caddy 自動憑證)
+✅ 實作 CSRF 防護
+
+效能優化:
+✅ PostgreSQL Connection Pool (已實作)
+✅ 資料庫索引 (已實作)
+✅ UPSERT 避免重複插入 (已實作)
+✅ 圖表使用 animation: false
+✅ WebSocket Heartbeat
+
+架構改進:
+✅ 分層架構 (Controller → Service → Repository)
+✅ TypeScript 類型定義
+✅ 統一錯誤處理
+✅ Docker Compose 容器化
+
+================================================================================
+快速開始指南
+================================================================================
+
+1. 閱讀分析報告:
+   - 先讀: NODERED_ANALYSIS_COMPLETE.md (完整架構)
+   - 再讀: QUICK_REFERENCE_MIGRATION.md (快速實作)
+   - 參考: flows_analysis_report.md (完整程式碼)
+
+2. 開始 Phase 2.1 開發:
+   - 創建 customers 資料表
+   - 實作 AuthService
+   - 實作 CustomerService
+   - 創建 API 端點
+   - 測試登入流程
+
+3. 使用範本:
+   - 複製 QUICK_REFERENCE 中的程式碼範本
+   - 根據 flows.json 中的邏輯調整
+   - 參考 Phase 1 實作風格
+
+4. 測試驗證:
+   - 使用 IoT 模擬器測試數據流
+   - 使用 Postman 測試 API
+   - 檢查資料庫記錄
+
+================================================================================
+重要注意事項
+================================================================================
+
+1. ⚠️ SOLARSDGS Logo 是 11082 字符的 Base64 字串
+   - 需要從 flows.json 提取
+   - 儲存到 frontend/public/icons/
+   - 用於 PWA 圖標和 Favicon
+
+2. ⚠️ Factor 修正機制必須保留
+   - 從 Flow Context 遷移到 PostgreSQL device_configs
+   - 數據解析器中應用 Factor
+   - 提供 UI 配置介面
+
+3. ⚠️ 保持 100% UI/UX 一致性
+   - 參考 Node-RED Dashboard 2.0 外觀
+   - 使用相同的圖表配色
+   - 保持相同的卡片布局
+
+4. ⚠️ MQTT Topic 格式不可變更
+   - IoT 設備已部署，無法修改 Topic
+   - 必須兼容現有的 Payload 格式
+   - 保留 solar/+/data 和 solar/+/gps
+
+================================================================================
+下一步行動
+================================================================================
+
+優先順序 1 (本週):
+1. 創建 customers 資料表
+2. 實作 AuthService + CustomerService
+3. 創建 /api/auth/* 和 /api/customers/* 路由
+4. 測試登入 API
+
+優先順序 2 (下週):
+1. 實作 WebSocketService
+2. 實作 UiFormatter
+3. 測試即時數據推送
+
+優先順序 3 (兩週後):
+1. 開始前端開發 (Vue 3)
+2. 實作 Login 頁面
+3. 實作 Dashboard 頁面
+
+================================================================================
+聯絡資訊
+================================================================================
+
+專案位置: C:\Users\wg444\solarsdgs-iot
+VPS: 72.61.117.219 (srv1122961.hstgr.cloud)
+域名: solarsdgs.online
+Git: (待配置)
+
+開發者: wg444
+分析工具: Claude Code (Sonnet 4.5)
+完成時間: 2025-11-14 23:30
+
+================================================================================

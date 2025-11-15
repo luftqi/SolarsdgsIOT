@@ -96,7 +96,17 @@ const ppg = ref(0)
 
 // 初始化
 onMounted(() => {
-  console.log('🚀 Dashboard mounted, connecting WebSocket...')
+  console.log('🚀 Dashboard mounted')
+
+  // 從 localStorage 讀取選中的設備 ID
+  const selectedDeviceId = localStorage.getItem('selectedDeviceId')
+  if (selectedDeviceId) {
+    deviceId.value = selectedDeviceId
+    console.log(`✅ 從 localStorage 讀取設備 ID: ${selectedDeviceId}`)
+  }
+
+  // 連接 WebSocket
+  console.log(`🔌 Connecting to WebSocket for device ${deviceId.value}...`)
   connect(deviceId.value)
 })
 
