@@ -161,7 +161,7 @@ async function handleLogin() {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  background: #eeeeee;
   padding: 20px;
 }
 
@@ -171,7 +171,7 @@ async function handleLogin() {
 .login-header {
   text-align: center;
   margin-bottom: 30px;
-  color: #1a1a1a;
+  color: #333;
 }
 
 .logo {
@@ -188,14 +188,14 @@ async function handleLogin() {
   font-size: 32px;
   font-weight: 700;
   margin: 10px 0 5px 0;
-  color: #1a1a1a;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  color: #0094CE;
+  text-shadow: none;
 }
 
 .subtitle {
   font-size: 16px;
-  color: #1a1a1a;
-  opacity: 0.8;
+  color: #666;
+  opacity: 1;
   margin: 0;
 }
 
@@ -245,8 +245,8 @@ async function handleLogin() {
 
 .form-group input:focus {
   outline: none;
-  border-color: #FFD700;
-  box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.2);
+  border-color: #0094CE;
+  box-shadow: 0 0 0 3px rgba(0, 148, 206, 0.1);
 }
 
 .form-group input:disabled {
@@ -274,27 +274,27 @@ async function handleLogin() {
 .btn-login {
   width: 100%;
   padding: 14px;
-  background: linear-gradient(135deg, #1a1a1a 0%, #333333 100%);
-  color: #FFD700;
+  background: linear-gradient(135deg, #0094CE 0%, #007bb5 100%);
+  color: white;
   border: none;
   border-radius: 8px;
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.3s;
-  box-shadow: 0 4px 12px rgba(26, 26, 26, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 148, 206, 0.3);
 }
 
 .btn-login:hover:not(:disabled) {
-  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-  color: #1a1a1a;
+  background: linear-gradient(135deg, #007bb5 0%, #00669a 100%);
+  color: white;
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(255, 215, 0, 0.4);
+  box-shadow: 0 6px 16px rgba(0, 148, 206, 0.4);
 }
 
 .btn-login:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 148, 206, 0.3);
 }
 
 .btn-login:disabled {
@@ -309,17 +309,17 @@ async function handleLogin() {
 .test-hint {
   margin-top: 20px;
   padding: 12px;
-  background: rgba(26, 26, 26, 0.15);
-  border: 1px solid #1a1a1a;
+  background: #f0f8ff;
+  border: 1px solid #0094CE;
   border-radius: 8px;
   text-align: center;
 }
 
 .test-hint p {
   margin: 0;
-  color: #1a1a1a;
+  color: #0094CE;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 /* ========================================
@@ -328,8 +328,8 @@ async function handleLogin() {
 .login-footer {
   margin-top: 30px;
   text-align: center;
-  color: #1a1a1a;
-  opacity: 0.9;
+  color: #666;
+  opacity: 1;
 }
 
 .login-footer p {

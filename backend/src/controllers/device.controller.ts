@@ -31,8 +31,9 @@ export class DeviceController {
       SELECT
         d.device_id,
         d.device_name,
-        d.location,
+        d.device_type,
         d.status,
+        d.last_seen,
         d.created_at,
         d.updated_at,
         c.factor_a,
@@ -67,8 +68,9 @@ export class DeviceController {
       SELECT
         d.device_id,
         d.device_name,
-        d.location,
+        d.device_type,
         d.status,
+        d.last_seen,
         d.created_at,
         d.updated_at,
         c.factor_a,
@@ -137,8 +139,9 @@ export class DeviceController {
       SELECT
         device_id,
         device_name,
-        location,
-        status
+        device_type,
+        status,
+        last_seen
       FROM devices
       WHERE device_id = $1;
     `;
