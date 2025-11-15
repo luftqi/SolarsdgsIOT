@@ -20,8 +20,10 @@ import { Logger } from './utils/logger';
 import { DatabaseService } from './services/database/DatabaseService';
 import { PowerDataRepository } from './services/database/PowerDataRepository';
 import { GpsLocationRepository } from './services/database/GpsLocationRepository';
+import { CustomerRepository } from './services/database/CustomerRepository';
 import { MqttService } from './services/mqtt/MqttService';
 import { WebSocketService } from './services/realtime/WebSocketService';
+import { AuthService } from './services/auth/AuthService';
 import { createApp } from './app';
 import type { Server as HttpServer } from 'http';
 
@@ -54,6 +56,11 @@ async function main() {
     logger.info('Step 2: Creating repositories...');
     const powerDataRepo = new PowerDataRepository(pool);
     const gpsLocationRepo = new GpsLocationRepository(pool);
+    const customerRepo = new CustomerRepository(pool);
+
+    // === 2.5. 創建 Auth Service ===
+    logger.info('Step 2.5: Creating Auth service...');
+    const authService = new AuthService(customerRepo);
 
     // === 3. 初始化 MQTT 服務 ===
     logger.info('Step 3: Initializing MQTT service...');
@@ -68,7 +75,7 @@ async function main() {
 
     // === 5. 初始化 Express API 服務器 ===
     logger.info('Step 5: Starting Express API server...');
-    const app = createApp();
+    const app = createApp({ authService });
     const PORT = parseInt(process.env.PORT || '3000');
 
     const httpServer: HttpServer = app.listen(PORT, () => {

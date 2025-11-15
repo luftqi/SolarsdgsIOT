@@ -14,6 +14,7 @@ import { Logger } from './utils/logger';
 import deviceRoutes from './routes/device.routes';
 import powerDataRoutes from './routes/powerData.routes';
 import { createPowerDataRoutes } from './routes/powerDataRoutes';
+import { createAuthRoutes } from './routes/authRoutes';
 import gpsRoutes from './routes/gps.routes';
 import healthRoutes from './routes/health.routes';
 
@@ -22,12 +23,19 @@ import { errorHandler } from './middleware/errorHandler';
 import { requestLogger } from './middleware/requestLogger';
 import { notFoundHandler } from './middleware/notFoundHandler';
 
+// Services
+import type { AuthService } from './services/auth/AuthService';
+
 const logger = new Logger('App');
+
+export interface AppDependencies {
+  authService?: AuthService;
+}
 
 /**
  * 建立並配置 Express 應用程式
  */
-export function createApp(): Application {
+export function createApp(deps?: AppDependencies): Application {
   const app = express();
 
   // ============================
@@ -71,6 +79,11 @@ export function createApp(): Application {
 
   // Health Check (系統健康檢查)
   app.use('/api/health', healthRoutes);
+
+  // Auth Routes (Phase 2.1)
+  if (deps?.authService) {
+    app.use('/api/auth', createAuthRoutes(deps.authService));
+  }
 
   // API Routes
   app.use('/api/devices', deviceRoutes);
