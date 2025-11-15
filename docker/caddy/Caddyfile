@@ -69,15 +69,9 @@ api.solarsdgs.online {
 	}
 	reverse_proxy @websocket backend:3000
 
-	# API CORS 設定
+	# 移除 Caddy 的 CORS headers (由 Backend 處理)
+	# 只保留 API 版本資訊
 	header {
-		Access-Control-Allow-Origin *
-		Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, DELETE, PATCH"
-		Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, X-API-Key"
-		Access-Control-Max-Age "3600"
-		Access-Control-Allow-Credentials "true"
-
-		# API 版本資訊
 		X-API-Version "1.0"
 	}
 
