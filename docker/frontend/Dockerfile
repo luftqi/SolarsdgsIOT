@@ -23,13 +23,14 @@ COPY tsconfig.json ./
 COPY tsconfig.node.json ./
 COPY public/ ./public/
 COPY src/ ./src/
+COPY .env ./
 
 # Build arguments for environment variables
-ARG VITE_API_BASE_URL=https://api.solarsdgs.online
-ARG VITE_WS_URL=wss://api.solarsdgs.online
+ARG VITE_API_URL=https://api.solarsdgs.online
+ARG VITE_WS_URL=https://api.solarsdgs.online
 
 # Set build-time environment variables
-ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_WS_URL=$VITE_WS_URL
 
 # Build for production
