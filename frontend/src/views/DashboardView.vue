@@ -136,6 +136,7 @@ import {
   LinearScale,
   PointElement,
   LineElement,
+  LineController,  // 新增: LineController 是必需的！
   Title,
   Tooltip,
   Legend,
@@ -149,6 +150,7 @@ Chart.register(
   LinearScale,
   PointElement,
   LineElement,
+  LineController,  // 新增: 註冊 LineController
   Title,
   Tooltip,
   Legend,
