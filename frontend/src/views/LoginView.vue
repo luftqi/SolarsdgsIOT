@@ -122,9 +122,9 @@ async function handleLogin() {
     if (response.data.success) {
       // 儲存 Token 和用戶資料到 localStorage
       localStorage.setItem('token', response.data.token)
-      localStorage.setItem('user', JSON.stringify(response.data.user))
+      localStorage.setItem('user', JSON.stringify(response.data.customer))
 
-      console.log('✅ 登入成功:', response.data.user)
+      console.log('✅ 登入成功:', response.data.customer)
 
       // 跳轉到設備選擇頁面
       await router.push('/devices')
