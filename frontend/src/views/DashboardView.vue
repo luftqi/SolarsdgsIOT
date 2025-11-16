@@ -697,7 +697,8 @@ function renderEfficiencyChart() {
           displayColors: true,
           callbacks: {
             label: (context) => {
-              return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}%`
+              const value = context.parsed.y
+              return `${context.dataset.label}: ${value !== null ? value.toFixed(2) : '0.00'}%`
             }
           }
         }
