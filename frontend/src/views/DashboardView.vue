@@ -470,18 +470,12 @@ async function refreshData() {
 
     if (deviceResponse.data.success) {
       deviceInfo.value = deviceResponse.data.data
-      console.log('[refreshData] Device info loaded:', {
-        device_id: deviceInfo.value.device_id,
-        timezone: deviceInfo.value.timezone,
-        computed_timezone: deviceTimezone.value
-      })
     }
 
     if (latestResponse.data.success) {
       latestData.value = latestResponse.data.data
     }
 
-    console.log('[refreshData] Before loadHistoricalData, deviceTimezone:', deviceTimezone.value)
     await loadHistoricalData()
 
   } catch (err: any) {
@@ -561,32 +555,10 @@ function renderChart() {
   }
 
   // 根據時間範圍自適應標籤格式（使用設備所在時區）
-  console.log('[Chart Debug] Before label generation:', {
-    deviceTimezone: deviceTimezone.value,
-    deviceInfo: deviceInfo.value,
-    sampleTimestamp: historicalData.value[0]?.timestamp,
-    chartTimeRange: chartTimeRange.value
-  })
-
-  const labels = historicalData.value.map((item, index) => {
+  const labels = historicalData.value.map(item => {
     const date = new Date(item.timestamp)
     const intervalMinutes = parseInt(chartTimeRange.value)
     const totalMinutes = intervalMinutes * 60  // 總時間範圍（分鐘）
-
-    // Debug first 3 labels
-    if (index < 3) {
-      console.log(`[Chart Debug] Label ${index}:`, {
-        rawTimestamp: item.timestamp,
-        dateUTC: date.toISOString(),
-        deviceTimezone: deviceTimezone.value,
-        formattedWithTZ: date.toLocaleTimeString('zh-TW', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          timeZone: deviceTimezone.value
-        })
-      })
-    }
 
     // 根據時間範圍決定標籤格式
     if (totalMinutes >= 1440) {
@@ -766,29 +738,10 @@ function renderEfficiencyChart() {
   }
 
   // 根據時間範圍自適應標籤格式（與功率圖表一致，使用設備所在時區）
-  console.log('[Efficiency Chart Debug] Before label generation:', {
-    deviceTimezone: deviceTimezone.value,
-    sampleTimestamp: historicalData.value[0]?.timestamp
-  })
-
-  const labels = historicalData.value.map((item, index) => {
+  const labels = historicalData.value.map(item => {
     const date = new Date(item.timestamp)
     const intervalMinutes = parseInt(chartTimeRange.value)
     const totalMinutes = intervalMinutes * 60  // 總時間範圍（分鐘）
-
-    // Debug first 2 labels
-    if (index < 2) {
-      console.log(`[Efficiency Chart Debug] Label ${index}:`, {
-        rawTimestamp: item.timestamp,
-        deviceTimezone: deviceTimezone.value,
-        formatted: date.toLocaleTimeString('zh-TW', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          timeZone: deviceTimezone.value
-        })
-      })
-    }
 
     // 根據時間範圍決定標籤格式
     if (totalMinutes >= 1440) {
