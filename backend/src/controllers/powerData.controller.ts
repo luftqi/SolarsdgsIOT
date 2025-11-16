@@ -217,13 +217,31 @@ export class PowerDataController {
       throw new BadRequestError('points must be between 1 and 1000');
     }
 
-    // 計算時間範圍：直接使用 UTC 當前時間
-    // 前端會根據設備時區顯示，後端只需要提供正確的 UTC 時間範圍
-    const endTime = new Date();  // UTC 當前時間
+    // 計算時間範圍：從最新數據往回推
+    // 1. 先獲取最新一筆數據的時間戳
+    const latestQuery = `
+      SELECT timestamp
+      FROM power_data
+      WHERE device_id = $1
+      ORDER BY timestamp DESC
+      LIMIT 1
+    `;
+    const latestResult = await this.powerDataRepo['pool'].query(latestQuery, [deviceId]);
+
+    let endTime: Date;
+    if (latestResult.rows.length > 0) {
+      // 使用最新數據的時間戳
+      endTime = new Date(latestResult.rows[0].timestamp);
+    } else {
+      // 如果沒有數據，使用當前時間
+      endTime = new Date();
+    }
+
+    // 2. 從最新數據往回推算時間範圍
     const startTime = new Date(endTime.getTime() - interval * points * 60 * 1000);
 
     logger.info(
-      `Getting aggregated data for device ${deviceId}: interval=${interval}min, points=${points}, range=${startTime.toISOString()} to ${endTime.toISOString()}`
+      `Getting aggregated data for device ${deviceId}: interval=${interval}min, points=${points}, latest=${endTime.toISOString()}, range=${startTime.toISOString()} to ${endTime.toISOString()}`
     );
 
     const data = await this.powerDataRepo.getAggregatedData(
