@@ -1,70 +1,125 @@
 <template>
-  <div class="solar-dash">
-    <!-- 頂部狀態列 -->
-    <div class="status-bar">
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <!-- Logo 圖片 -->
-        <img :src="logoBase64" alt="SOLARSDGS" style="width: 35px; height: 35px; border-radius: 6px; background: white; padding: 5px; box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);">
-
-        <span class="status-dot" :class="{on: connected}"></span>
-
-        <!-- 設備選擇器 -->
-        <select v-model="deviceId" @change="switchDevice" style="padding: 6px 10px; border-radius: 4px; border: 1px solid #ddd; font-weight: 600;">
-          <option v-for="id in availableDevices" :key="id" :value="id">
-            設備 {{id}}
-          </option>
-        </select>
-
-        <span style="opacity: 0.8;">{{connected ? '🟢 在線' : '🔴 離線'}}</span>
-        <span v-if="loading" style="color: #f39c12; font-size: 12px;">
-          ⏳ 載入中...
+  <div class="dashboard-container">
+    <!-- 頂部導航欄 -->
+    <div class="navbar">
+      <div class="navbar-left">
+        <img :src="logoPath" alt="SOLARSDGS" class="navbar-logo">
+        <span class="navbar-title">SolarSDGs IoT</span>
+        <span class="device-badge">設備 {{ deviceId }}</span>
+      </div>
+      <div class="navbar-right">
+        <span class="connection-status" :class="{ connected: isConnected }">
+          {{ isConnected ? '🟢 已連線' : '🔴 未連線' }}
         </span>
-      </div>
-
-      <div style="display: flex; gap: 15px; align-items: center;">
-        <span style="opacity: 0.8;">{{lastUpdate}}</span>
-      </div>
-    </div>
-
-    <!-- 功率卡片 -->
-    <div class="metrics">
-      <div class="card">
-        <h3>PG 發電功率</h3>
-        <div class="val" style="color: #3498db;">{{pg}}</div>
-        <div>W</div>
-      </div>
-      <div class="card">
-        <h3>PA 負載A</h3>
-        <div class="val" style="color: #2ecc71;">{{pa}}</div>
-        <div>W</div>
-      </div>
-      <div class="card">
-        <h3>PP 負載P</h3>
-        <div class="val" style="color: #e74c3c;">{{pp}}</div>
-        <div>W</div>
+        <span class="user-name">👤 {{ userName }}</span>
+        <button @click="handleBack" class="btn-back">返回設備列表</button>
+        <button @click="handleLogout" class="btn-logout">登出</button>
       </div>
     </div>
 
-    <!-- 效率卡片 -->
-    <div class="eff">
-      <div class="card">
-        <h3>PAG 效率</h3>
-        <div class="val" style="color: #9b59b6;">{{pag.toFixed(2)}}%</div>
-        <div class="bar">
-          <div class="fill" :style="{
-            width: Math.max(0, Math.min(100, pag)) + '%',
-            background: 'linear-gradient(90deg, #9b59b6, #8e44ad)'
-          }"></div>
+    <!-- 主內容區域 -->
+    <div class="dashboard-content">
+      <!-- 載入中 -->
+      <div v-if="loading" class="loading-state">
+        <div class="spinner"></div>
+        <p>載入設備數據中...</p>
+      </div>
+
+      <!-- 錯誤訊息 -->
+      <div v-else-if="error" class="error-state">
+        <p class="error-icon">⚠️</p>
+        <p class="error-message">{{ error }}</p>
+        <button @click="loadDashboard" class="btn-retry">重新載入</button>
+      </div>
+
+      <!-- Dashboard 主內容 -->
+      <div v-else class="dashboard-main">
+        <!-- 即時功率卡片 -->
+        <div class="power-section">
+          <h2 class="section-title">即時功率數據</h2>
+          <div class="power-cards">
+            <div class="power-card pg-card">
+              <div class="card-header">
+                <div class="card-icon">⚡</div>
+                <h3>發電功率 (PG)</h3>
+              </div>
+              <div class="card-value">{{ formatNumber(latestData?.pg) }}<span class="unit">W</span></div>
+              <div class="card-footer">Generation Power</div>
+            </div>
+
+            <div class="power-card pa-card">
+              <div class="card-header">
+                <div class="card-icon">🔌</div>
+                <h3>負載 A (PA)</h3>
+              </div>
+              <div class="card-value">{{ formatNumber(latestData?.pa) }}<span class="unit">W</span></div>
+              <div class="efficiency" :class="getEfficiencyClass(pagEfficiency)">
+                {{ formatEfficiency(pagEfficiency) }}
+              </div>
+            </div>
+
+            <div class="power-card pp-card">
+              <div class="card-header">
+                <div class="card-icon">💡</div>
+                <h3>負載 P (PP)</h3>
+              </div>
+              <div class="card-value">{{ formatNumber(latestData?.pp) }}<span class="unit">W</span></div>
+              <div class="efficiency" :class="getEfficiencyClass(ppgEfficiency)">
+                {{ formatEfficiency(ppgEfficiency) }}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="card">
-        <h3>PPG 效率</h3>
-        <div class="val" style="color: #f39c12;">{{ppg.toFixed(2)}}%</div>
-        <div class="bar">
-          <div class="fill" :style="{
-            width: Math.max(0, Math.min(100, ppg)) + '%',
-            background: 'linear-gradient(90deg, #f39c12, #e67e22)'
-          }"></div>
+
+        <!-- 歷史趨勢圖表 -->
+        <div class="chart-section">
+          <div class="section-header">
+            <h2 class="section-title">功率趨勢圖</h2>
+            <div class="chart-controls">
+              <select v-model="chartTimeRange" @change="updateChart" class="time-range-select">
+                <option value="60">最近 1 小時</option>
+                <option value="180">最近 3 小時</option>
+                <option value="360">最近 6 小時</option>
+                <option value="720">最近 12 小時</option>
+              </select>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas ref="chartCanvas"></canvas>
+          </div>
+        </div>
+
+        <!-- 設備資訊與狀態 -->
+        <div class="info-section">
+          <h2 class="section-title">設備資訊</h2>
+          <div class="info-grid">
+            <div class="info-card">
+              <div class="info-label">設備名稱</div>
+              <div class="info-value">{{ deviceInfo?.device_name || 'N/A' }}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">設備類型</div>
+              <div class="info-value">{{ deviceInfo?.device_type || 'N/A' }}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">設備狀態</div>
+              <div class="info-value" :class="getStatusClass(deviceInfo?.status)">
+                {{ getStatusText(deviceInfo?.status) }}
+              </div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">最後更新</div>
+              <div class="info-value">{{ formatDateTime(latestData?.timestamp) }}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">數據總數</div>
+              <div class="info-value">{{ dataCount }} 筆</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">自動刷新</div>
+              <div class="info-value">每 5 秒</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -72,75 +127,901 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
-import { useWebSocket } from '../composables/useWebSocket'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
+import {
+  Chart,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js'
+import type { ChartConfiguration } from 'chart.js'
 
-// Logo Base64 (從 Node-RED 提取)
-const logoBase64 = ref('data:image/png;base64,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')
+// 註冊 Chart.js 組件
+Chart.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+)
 
-// WebSocket
-const { connected, realtimeData, connect, switchDevice: wsSwitch } = useWebSocket()
+const router = useRouter()
+const logoPath = ref('/logo.png')
 
-// 狀態
-const deviceId = ref(import.meta.env.VITE_DEFAULT_DEVICE_ID || '6001')
-const availableDevices = ref(['6001', '6002'])
-const loading = ref(false)
-const lastUpdate = ref('--')
-
-// 功率數據
-const pg = ref(0)
-const pa = ref(0)
-const pp = ref(0)
-const pag = ref(0)
-const ppg = ref(0)
-
-// 初始化
-onMounted(() => {
-  console.log('🚀 Dashboard mounted')
-
-  // 從 localStorage 讀取選中的設備 ID
-  const selectedDeviceId = localStorage.getItem('selectedDeviceId')
-  if (selectedDeviceId) {
-    deviceId.value = selectedDeviceId
-    console.log(`✅ 從 localStorage 讀取設備 ID: ${selectedDeviceId}`)
-  }
-
-  // 連接 WebSocket
-  console.log(`🔌 Connecting to WebSocket for device ${deviceId.value}...`)
-  connect(deviceId.value)
-})
-
-// 監聽即時數據
-watch(realtimeData, (newData) => {
-  if (newData) {
-    pg.value = newData.pg
-    pa.value = newData.pa
-    pp.value = newData.pp
-    pag.value = newData.pag
-    ppg.value = newData.ppg
-    lastUpdate.value = newData.lastUpdate
-
-    console.log('📊 Data updated:', {
-      pg: pg.value,
-      pa: pa.value,
-      pp: pp.value
-    })
-  }
-})
-
-// 切換設備
-function switchDevice() {
-  const oldDeviceId = deviceId.value
-  loading.value = true
-
-  setTimeout(() => {
-    wsSwitch(oldDeviceId, deviceId.value)
-    loading.value = false
-    console.log(`🔄 Switched to device ${deviceId.value}`)
-  }, 500)
+// 設備資料介面
+interface PowerData {
+  id: number
+  device_id: string
+  timestamp: string
+  pg: number
+  pa: number
+  pp: number
+  pga_efficiency: number
+  pgp_efficiency: number
 }
+
+interface DeviceInfo {
+  device_id: string
+  device_name?: string
+  device_type?: string
+  status: string
+  last_seen?: string
+}
+
+// 狀態管理
+const deviceId = ref('')
+const userName = ref('')
+const loading = ref(false)
+const error = ref('')
+const isConnected = ref(false)
+
+const latestData = ref<PowerData | null>(null)
+const historicalData = ref<PowerData[]>([])
+const deviceInfo = ref<DeviceInfo | null>(null)
+const dataCount = ref(0)
+
+const chartCanvas = ref<HTMLCanvasElement | null>(null)
+const chartTimeRange = ref('60')
+let chartInstance: Chart | null = null
+let refreshInterval: NodeJS.Timeout | null = null
+
+// 計算效率
+const pagEfficiency = computed(() => {
+  return latestData.value?.pga_efficiency || 0
+})
+
+const ppgEfficiency = computed(() => {
+  return latestData.value?.pgp_efficiency || 0
+})
+
+// 格式化函數
+function formatNumber(value?: number): string {
+  if (value === undefined || value === null) return '0'
+  return value.toLocaleString('zh-TW')
+}
+
+function formatEfficiency(value: number): string {
+  const formatted = value.toFixed(2)
+  return value >= 0 ? `+${formatted}%` : `${formatted}%`
+}
+
+function getEfficiencyClass(value: number): string {
+  if (value > 10) return 'efficiency-high'
+  if (value > 0) return 'efficiency-positive'
+  if (value > -10) return 'efficiency-negative'
+  return 'efficiency-low'
+}
+
+function getStatusClass(status?: string): string {
+  return status === 'online' ? 'status-online' : 'status-offline'
+}
+
+function getStatusText(status?: string): string {
+  return status === 'online' ? '在線' : '離線'
+}
+
+function formatDateTime(dateStr?: string): string {
+  if (!dateStr) return 'N/A'
+  try {
+    const date = new Date(dateStr)
+    return date.toLocaleString('zh-TW', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  } catch {
+    return 'N/A'
+  }
+}
+
+// 載入 Dashboard 數據
+async function loadDashboard() {
+  loading.value = true
+  error.value = ''
+
+  try {
+    const token = localStorage.getItem('token')
+    const userStr = localStorage.getItem('user')
+    deviceId.value = localStorage.getItem('selectedDeviceId') || ''
+
+    if (!token || !userStr) {
+      router.push('/login')
+      return
+    }
+
+    const user = JSON.parse(userStr)
+    userName.value = user.customerName || user.customerCode
+
+    if (!user.devices || !user.devices.includes(deviceId.value)) {
+      error.value = `無權訪問設備 ${deviceId.value}`
+      setTimeout(() => router.push('/devices'), 2000)
+      return
+    }
+
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://72.61.117.219:3000'
+
+    const deviceResponse = await axios.get(
+      `${apiUrl}/api/devices/${deviceId.value}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
+    if (deviceResponse.data.success) {
+      deviceInfo.value = deviceResponse.data.data
+    }
+
+    const latestResponse = await axios.get(
+      `${apiUrl}/api/power-data/${deviceId.value}/latest`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
+    if (latestResponse.data.success) {
+      latestData.value = latestResponse.data.data
+    }
+
+    await loadHistoricalData()
+
+    isConnected.value = true
+    console.log('Dashboard loaded successfully')
+
+  } catch (err: any) {
+    console.error('Dashboard loading error:', err)
+
+    if (err.response?.status === 401) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      router.push('/login')
+    } else if (err.response?.status === 403) {
+      error.value = err.response.data.message || '無權訪問此設備'
+      setTimeout(() => router.push('/devices'), 2000)
+    } else {
+      error.value = err.response?.data?.message || 'Dashboard 載入失敗'
+    }
+    isConnected.value = false
+  } finally {
+    loading.value = false
+  }
+}
+
+async function loadHistoricalData() {
+  try {
+    const token = localStorage.getItem('token')
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://72.61.117.219:3000'
+    const limit = parseInt(chartTimeRange.value)
+
+    const response = await axios.get(
+      `${apiUrl}/api/power-data/${deviceId.value}/latest/${limit}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
+    if (response.data.success) {
+      historicalData.value = response.data.data.reverse()
+      dataCount.value = response.data.data.length
+      renderChart()
+    }
+  } catch (err) {
+    console.error('Failed to load historical data:', err)
+  }
+}
+
+function updateChart() {
+  loadHistoricalData()
+}
+
+function renderChart() {
+  if (!chartCanvas.value || historicalData.value.length === 0) return
+
+  const labels = historicalData.value.map(item => {
+    const date = new Date(item.timestamp)
+    return date.toLocaleTimeString('zh-TW', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  })
+
+  const pgData = historicalData.value.map(item => item.pg)
+  const paData = historicalData.value.map(item => item.pa)
+  const ppData = historicalData.value.map(item => item.pp)
+
+  if (chartInstance) {
+    chartInstance.destroy()
+  }
+
+  const config: ChartConfiguration = {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'PG (發電功率)',
+          data: pgData,
+          borderColor: '#FFC107',
+          backgroundColor: 'rgba(255, 193, 7, 0.1)',
+          borderWidth: 3,
+          tension: 0.4,
+          fill: true,
+          pointRadius: 2,
+          pointHoverRadius: 6
+        },
+        {
+          label: 'PA (負載 A)',
+          data: paData,
+          borderColor: '#2196F3',
+          backgroundColor: 'rgba(33, 150, 243, 0.1)',
+          borderWidth: 3,
+          tension: 0.4,
+          fill: true,
+          pointRadius: 2,
+          pointHoverRadius: 6
+        },
+        {
+          label: 'PP (負載 P)',
+          data: ppData,
+          borderColor: '#4CAF50',
+          backgroundColor: 'rgba(76, 175, 80, 0.1)',
+          borderWidth: 3,
+          tension: 0.4,
+          fill: true,
+          pointRadius: 2,
+          pointHoverRadius: 6
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        title: {
+          display: false
+        },
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            color: '#ecf0f1',
+            font: {
+              size: 14,
+              weight: 'bold'
+            },
+            padding: 15,
+            usePointStyle: true
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          titleColor: '#FFC107',
+          bodyColor: '#ecf0f1',
+          borderColor: '#FFC107',
+          borderWidth: 1,
+          padding: 12,
+          displayColors: true,
+          callbacks: {
+            label: (context) => {
+              return `${context.dataset.label}: ${context.parsed.y} W`
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: '#b0bec5',
+            maxRotation: 45,
+            minRotation: 45,
+            font: {
+              size: 11
+            }
+          },
+          grid: {
+            color: 'rgba(176, 190, 197, 0.1)',
+            drawBorder: false
+          }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: '#b0bec5',
+            font: {
+              size: 12
+            },
+            callback: (value) => `${value} W`
+          },
+          grid: {
+            color: 'rgba(176, 190, 197, 0.1)',
+            drawBorder: false
+          }
+        }
+      }
+    }
+  }
+
+  chartInstance = new Chart(chartCanvas.value, config)
+}
+
+function handleBack() {
+  router.push('/devices')
+}
+
+function handleLogout() {
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+  localStorage.removeItem('selectedDeviceId')
+  router.push('/login')
+}
+
+onMounted(() => {
+  loadDashboard()
+
+  refreshInterval = setInterval(() => {
+    loadDashboard()
+  }, 5000)
+})
+
+onUnmounted(() => {
+  if (refreshInterval) {
+    clearInterval(refreshInterval)
+  }
+  if (chartInstance) {
+    chartInstance.destroy()
+  }
+})
 </script>
 
 <style scoped>
-/* Dashboard 特定樣式已在 main.css 中定義 */
+/* ========================================
+   Dashboard Container
+   ======================================== */
+.dashboard-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #3e5563 0%, #2c3e50 100%);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ========================================
+   Navbar
+   ======================================== */
+.navbar {
+  background: #2c3e50;
+  padding: 15px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  border-bottom: 3px solid #FFC107;
+}
+
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.navbar-logo {
+  height: 40px;
+  width: auto;
+}
+
+.navbar-title {
+  font-size: 24px;
+  font-weight: bold;
+  color: #FFC107;
+  letter-spacing: 1px;
+}
+
+.device-badge {
+  background: rgba(255, 193, 7, 0.2);
+  color: #FFC107;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid #FFC107;
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.connection-status {
+  font-size: 14px;
+  color: #e74c3c;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 15px;
+  background: rgba(231, 76, 60, 0.1);
+  transition: all 0.3s;
+}
+
+.connection-status.connected {
+  color: #2ecc71;
+  background: rgba(46, 204, 113, 0.1);
+}
+
+.user-name {
+  color: #ecf0f1;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.btn-back,
+.btn-logout {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-back {
+  background: #3498db;
+  color: white;
+}
+
+.btn-back:hover {
+  background: #2980b9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
+}
+
+.btn-logout {
+  background: #e74c3c;
+  color: white;
+}
+
+.btn-logout:hover {
+  background: #c0392b;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(231, 76, 60, 0.3);
+}
+
+/* ========================================
+   Dashboard Content
+   ======================================== */
+.dashboard-content {
+  flex: 1;
+  padding: 30px;
+  overflow-y: auto;
+}
+
+/* ========================================
+   Loading State
+   ======================================== */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  color: #ecf0f1;
+}
+
+.spinner {
+  width: 60px;
+  height: 60px;
+  border: 6px solid rgba(255, 193, 7, 0.2);
+  border-top-color: #FFC107;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-state p {
+  font-size: 18px;
+  font-weight: 500;
+}
+
+/* ========================================
+   Error State
+   ======================================== */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  color: #ecf0f1;
+}
+
+.error-icon {
+  font-size: 80px;
+  margin-bottom: 20px;
+}
+
+.error-message {
+  font-size: 18px;
+  margin-bottom: 30px;
+  color: #e74c3c;
+  font-weight: 600;
+}
+
+.btn-retry {
+  padding: 12px 30px;
+  background: #FFC107;
+  color: #2c3e50;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-retry:hover {
+  background: #ffb300;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(255, 193, 7, 0.4);
+}
+
+/* ========================================
+   Dashboard Main
+   ======================================== */
+.dashboard-main {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+/* ========================================
+   Section Titles
+   ======================================== */
+.section-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #FFC107;
+  margin-bottom: 20px;
+  border-left: 4px solid #FFC107;
+  padding-left: 15px;
+}
+
+/* ========================================
+   Power Section
+   ======================================== */
+.power-section {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 25px;
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.power-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 25px;
+}
+
+.power-card {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 25px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  transition: all 0.3s;
+  cursor: pointer;
+}
+
+.power-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.pg-card {
+  border-color: #FFC107;
+}
+
+.pg-card:hover {
+  background: rgba(255, 193, 7, 0.1);
+  box-shadow: 0 10px 25px rgba(255, 193, 7, 0.3);
+}
+
+.pa-card {
+  border-color: #2196F3;
+}
+
+.pa-card:hover {
+  background: rgba(33, 150, 243, 0.1);
+  box-shadow: 0 10px 25px rgba(33, 150, 243, 0.3);
+}
+
+.pp-card {
+  border-color: #4CAF50;
+}
+
+.pp-card:hover {
+  background: rgba(76, 175, 80, 0.1);
+  box-shadow: 0 10px 25px rgba(76, 175, 80, 0.3);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.card-icon {
+  font-size: 32px;
+}
+
+.card-header h3 {
+  font-size: 16px;
+  color: #b0bec5;
+  font-weight: 600;
+  margin: 0;
+}
+
+.card-value {
+  font-size: 48px;
+  font-weight: bold;
+  color: #ecf0f1;
+  margin-bottom: 10px;
+}
+
+.card-value .unit {
+  font-size: 24px;
+  color: #b0bec5;
+  margin-left: 8px;
+  font-weight: 500;
+}
+
+.card-footer {
+  font-size: 13px;
+  color: #7f8c8d;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.efficiency {
+  font-size: 16px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 6px;
+  text-align: center;
+  margin-top: 10px;
+}
+
+.efficiency-high {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4CAF50;
+}
+
+.efficiency-positive {
+  background: rgba(139, 195, 74, 0.2);
+  color: #8BC34A;
+}
+
+.efficiency-negative {
+  background: rgba(255, 152, 0, 0.2);
+  color: #FF9800;
+}
+
+.efficiency-low {
+  background: rgba(244, 67, 54, 0.2);
+  color: #F44336;
+}
+
+/* ========================================
+   Chart Section
+   ======================================== */
+.chart-section {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 25px;
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.chart-controls {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.time-range-select {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ecf0f1;
+  border: 2px solid #FFC107;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.time-range-select:hover {
+  background: rgba(255, 193, 7, 0.2);
+}
+
+.time-range-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.3);
+}
+
+.chart-container {
+  height: 400px;
+  position: relative;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 20px;
+  border-radius: 8px;
+}
+
+/* ========================================
+   Info Section
+   ======================================== */
+.info-section {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 25px;
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.info-card {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 20px;
+  border-radius: 8px;
+  border-left: 4px solid #FFC107;
+  transition: all 0.3s;
+}
+
+.info-card:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateX(5px);
+}
+
+.info-label {
+  font-size: 13px;
+  color: #b0bec5;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.info-value {
+  font-size: 18px;
+  color: #ecf0f1;
+  font-weight: 700;
+}
+
+.status-online {
+  color: #2ecc71;
+}
+
+.status-offline {
+  color: #e74c3c;
+}
+
+/* ========================================
+   Responsive Design
+   ======================================== */
+@media (max-width: 1024px) {
+  .navbar {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .navbar-left,
+  .navbar-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .power-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-content {
+    padding: 20px 15px;
+  }
+
+  .navbar {
+    padding: 15px;
+  }
+
+  .navbar-title {
+    font-size: 18px;
+  }
+
+  .section-title {
+    font-size: 18px;
+  }
+
+  .card-value {
+    font-size: 36px;
+  }
+
+  .chart-container {
+    height: 300px;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .navbar-right {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .card-value {
+    font-size: 28px;
+  }
+}
 </style>
