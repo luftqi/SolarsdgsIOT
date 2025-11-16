@@ -152,13 +152,13 @@
             <h2 class="section-title">功率趨勢圖</h2>
             <div class="chart-controls">
               <select v-model="chartTimeRange" @change="updateChart" class="time-range-select">
-                <option value="60">最近 1 小時</option>
-                <option value="180">最近 3 小時</option>
-                <option value="360">最近 6 小時</option>
-                <option value="720">最近 12 小時</option>
-                <option value="1440">最近 1 天</option>
-                <option value="4320">最近 3 天</option>
-                <option value="10080">最近 1 週</option>
+                <option value="1">1 分鐘/點 (過去 60 分鐘)</option>
+                <option value="5">5 分鐘/點 (過去 5 小時)</option>
+                <option value="10">10 分鐘/點 (過去 10 小時)</option>
+                <option value="30">30 分鐘/點 (過去 30 小時)</option>
+                <option value="60">1 小時/點 (過去 60 小時)</option>
+                <option value="360">6 小時/點 (過去 15 天)</option>
+                <option value="1440">1 天/點 (過去 60 天)</option>
               </select>
               <button @click="downloadPowerData" class="btn-download" :disabled="downloadingData">
                 {{ downloadingData ? '📥 下載中...' : '📥 下載資料 (CSV)' }}
@@ -270,7 +270,8 @@ const deviceInfo = ref<DeviceInfo | null>(null)
 const dataCount = ref(0)
 
 const chartCanvas = ref<HTMLCanvasElement | null>(null)
-const chartTimeRange = ref('60')
+// 時間粒度（分鐘/點）
+const chartTimeRange = ref('10')  // 預設 10 分鐘/點
 const efficiencyChartCanvas = ref<HTMLCanvasElement | null>(null)
 const efficiencyTimeRange = ref('60')
 let chartInstance: Chart | null = null
@@ -433,18 +434,38 @@ async function loadHistoricalData() {
   try {
     const token = localStorage.getItem('token')
     const apiUrl = import.meta.env.VITE_API_URL || 'http://72.61.117.219:3000'
-    const limit = parseInt(chartTimeRange.value)
+    const interval = parseInt(chartTimeRange.value)  // 時間粒度（分鐘/點）
+    const points = 60  // 固定 60 個資料點
+
+    console.log(`[loadHistoricalData] 載入聚合數據: interval=${interval}分鐘, points=${points}`)
 
     const response = await axios.get(
-      `${apiUrl}/api/power-data/${deviceId.value}/latest/${limit}`,
-      { headers: { Authorization: `Bearer ${token}` } }
+      `${apiUrl}/api/power-data/device/${deviceId.value}/aggregated`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { interval, points }
+      }
     )
 
     if (response.data.success) {
-      historicalData.value = response.data.data.reverse()
-      dataCount.value = response.data.data.length
+      // 後端返回的 records 包含 bucket_time, avg_pg, avg_pa, avg_pp, avg_pag, avg_pgp
+      const records = response.data.data.records
+
+      // 轉換為前端需要的格式
+      historicalData.value = records.map((record: any) => ({
+        timestamp: record.bucket_time,
+        pg: parseFloat(record.avg_pg) || 0,
+        pa: parseFloat(record.avg_pa) || 0,
+        pp: parseFloat(record.avg_pp) || 0,
+        pag_efficiency: parseFloat(record.avg_pag) || 0,
+        pgp_efficiency: parseFloat(record.avg_pgp) || 0
+      }))
+
+      dataCount.value = historicalData.value.length
+      console.log(`[loadHistoricalData] 成功載入 ${dataCount.value} 筆聚合數據`)
+
       renderChart()
-      renderEfficiencyChart()  // 新增: 同時渲染效率圖
+      renderEfficiencyChart()
     }
   } catch (err) {
     console.error('Failed to load historical data:', err)
@@ -589,7 +610,9 @@ function renderChart() {
             color: '#b0bec5',
             font: {
               size: 11
-            }
+            },
+            autoSkip: true,
+            maxTicksLimit: 10  // 最多顯示 10 個標籤
           },
           grid: {
             color: 'rgba(176, 190, 197, 0.1)'
@@ -729,7 +752,9 @@ function renderEfficiencyChart() {
             color: '#b0bec5',
             font: {
               size: 11
-            }
+            },
+            autoSkip: true,
+            maxTicksLimit: 10  // 最多顯示 10 個標籤
           },
           grid: {
             color: 'rgba(176, 190, 197, 0.1)'
