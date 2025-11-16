@@ -92,7 +92,9 @@
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjdXN0b21lcklkIjoxLCJjdXN0b21lckNvZGUiOiJhZG1pbiIsImN1c3RvbWVyTmFtZSI6IkFkbWluaXN0cmF0b3IiLCJkZXZpY2VzIjpbIjYwMDEiXSwiaWF0IjoxNzYzMjIxMjU1LCJleHAiOjE3NjM4MjYwNTV9.EZJfIIIhVPFeYZePtC2uIbOqfOoXUdN-Dt0kMi7vDWU\")",
       "Bash(__NEW_LINE__ curl -X POST http://72.61.117.219:3000/api/auth/verify )",
       "Bash(__NEW_LINE__ curl -X POST http://72.61.117.219:3000/api/auth/refresh )",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(npx vue-tsc:*)"
     ],
     "deny": [],
     "ask": []
