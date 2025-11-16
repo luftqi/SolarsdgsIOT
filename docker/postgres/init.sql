@@ -77,30 +77,40 @@ CREATE TABLE IF NOT EXISTS device_config (
         ON DELETE CASCADE
 );
 
--- === 5. 圖像表 (Images) ===
-CREATE TABLE IF NOT EXISTS images (
+-- === 5. 圖像表 (Device Images) - Phase 3.1 ===
+-- 儲存 RGB + 熱影像配對數據
+CREATE TABLE IF NOT EXISTS device_images (
     id SERIAL PRIMARY KEY,
     device_id VARCHAR(50) NOT NULL,
-    image_type VARCHAR(20) NOT NULL,        -- 'rgb' or 'thermal'
-    file_path VARCHAR(255) NOT NULL,        -- 圖像檔案路徑
-    thumbnail_path VARCHAR(255),            -- 縮圖路徑
-    file_size INTEGER,                      -- 檔案大小 (bytes)
-    width INTEGER,                          -- 圖像寬度
-    height INTEGER,                         -- 圖像高度
-    timestamp TIMESTAMP NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    -- RGB 圖像
+    rgb_image_path VARCHAR(255) NOT NULL,
+    rgb_thumbnail_path VARCHAR(255),
+    rgb_file_size INTEGER,
+
+    -- 熱影像
+    thermal_image_path VARCHAR(255) NOT NULL,
+    thermal_thumbnail_path VARCHAR(255),
+    thermal_file_size INTEGER,
+
+    -- 拍攝時間
+    captured_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 
     -- 外鍵約束
-    CONSTRAINT fk_images_device
+    CONSTRAINT fk_device_images_device
         FOREIGN KEY (device_id)
         REFERENCES devices(device_id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+
+    -- 唯一約束：同一設備同一時間只能有一組圖像
+    CONSTRAINT unique_device_images_timestamp UNIQUE (device_id, captured_at)
 );
 
 -- 索引優化
-CREATE INDEX idx_images_device_id ON images(device_id);
-CREATE INDEX idx_images_timestamp ON images(timestamp);
-CREATE INDEX idx_images_type ON images(image_type);
+CREATE INDEX idx_device_images_device_id ON device_images(device_id);
+CREATE INDEX idx_device_images_captured_at ON device_images(captured_at DESC);
+CREATE INDEX idx_device_images_device_time ON device_images(device_id, captured_at DESC);
 
 -- === 6. 用戶表 (Users) ===
 CREATE TABLE IF NOT EXISTS users (
