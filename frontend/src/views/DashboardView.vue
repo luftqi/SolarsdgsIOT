@@ -197,6 +197,13 @@
           :auto-refresh="true"
           :refresh-interval="60"
         />
+
+        <!-- GPS 設備位置地圖 -->
+        <DeviceMapCard
+          :device-id="deviceId"
+          :auto-refresh="true"
+          :refresh-interval="300"
+        />
       </div>
     </div>
 
@@ -259,6 +266,7 @@ import {
 } from 'chart.js'
 import type { ChartConfiguration } from 'chart.js'
 import LatestImageCard from '@/components/dashboard/LatestImageCard.vue'
+import DeviceMapCard from '@/components/dashboard/DeviceMapCard.vue'
 
 // 註冊 Chart.js 組件
 Chart.register(
