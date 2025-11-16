@@ -181,6 +181,13 @@
             <canvas ref="efficiencyChartCanvas"></canvas>
           </div>
         </div>
+
+        <!-- 最新圖像 (Phase 3.1) -->
+        <LatestImageCard
+          :device-id="deviceId"
+          :auto-refresh="true"
+          :refresh-interval="60"
+        />
       </div>
     </div>
   </div>
@@ -203,6 +210,7 @@ import {
   Filler
 } from 'chart.js'
 import type { ChartConfiguration } from 'chart.js'
+import LatestImageCard from '@/components/dashboard/LatestImageCard.vue'
 
 // 註冊 Chart.js 組件
 Chart.register(
