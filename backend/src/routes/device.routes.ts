@@ -65,4 +65,17 @@ router.get(
   asyncHandler(controller.getStatus.bind(controller))
 );
 
+/**
+ * PUT /api/devices/:deviceId/config
+ *
+ * 更新設備 Factor 配置
+ * ⚠️ 需要 JWT 認證 + 該設備權限
+ */
+router.put(
+  '/:deviceId/config',
+  authMiddleware,
+  checkDeviceAccess,
+  asyncHandler(controller.updateConfig.bind(controller))
+);
+
 export default router;

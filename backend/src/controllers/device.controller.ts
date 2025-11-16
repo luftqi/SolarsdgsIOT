@@ -212,4 +212,53 @@ export class DeviceController {
       },
     });
   }
+
+  /**
+   * PUT /api/devices/:deviceId/config
+   *
+   * 更新設備 Factor 配置
+   */
+  async updateConfig(req: Request, res: Response): Promise<void> {
+    const { deviceId } = req.params;
+    const { factor_a, factor_p } = req.body;
+
+    logger.info(`Updating config for device ${deviceId}: factor_a=${factor_a}, factor_p=${factor_p}`);
+
+    // 驗證 Factor 範圍
+    if (factor_a !== undefined && (factor_a < 0.5 || factor_a > 2.0)) {
+      res.status(400).json({
+        success: false,
+        message: 'factor_a must be between 0.5 and 2.0'
+      });
+      return;
+    }
+
+    if (factor_p !== undefined && (factor_p < 0.5 || factor_p > 2.0)) {
+      res.status(400).json({
+        success: false,
+        message: 'factor_p must be between 0.5 and 2.0'
+      });
+      return;
+    }
+
+    // 更新配置
+    const query = `
+      INSERT INTO device_config (device_id, factor_a, factor_p, updated_at)
+      VALUES ($1, $2, $3, NOW())
+      ON CONFLICT (device_id)
+      DO UPDATE SET
+        factor_a = COALESCE($2, device_config.factor_a),
+        factor_p = COALESCE($3, device_config.factor_p),
+        updated_at = NOW()
+      RETURNING device_id, factor_a, factor_p, updated_at;
+    `;
+
+    const result = await this.pool.query(query, [deviceId, factor_a, factor_p]);
+
+    res.json({
+      success: true,
+      message: 'Factor configuration updated successfully',
+      data: result.rows[0],
+    });
+  }
 }

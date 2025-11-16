@@ -104,7 +104,49 @@
           </div>
         </div>
 
-        <!-- 歷史趨勢圖表 -->
+        <!-- Factor 設定 (修正係數) -->
+        <div class="factor-section">
+          <h2 class="section-title">Factor 設定 (效率修正係數)</h2>
+          <div class="factor-controls">
+            <div class="factor-input-group">
+              <label for="factor-a">Factor A (PA修正):</label>
+              <input
+                id="factor-a"
+                v-model.number="factorA"
+                type="number"
+                step="0.01"
+                min="0.5"
+                max="2.0"
+                class="factor-input"
+              />
+            </div>
+            <div class="factor-input-group">
+              <label for="factor-p">Factor P (PP修正):</label>
+              <input
+                id="factor-p"
+                v-model.number="factorP"
+                type="number"
+                step="0.01"
+                min="0.5"
+                max="2.0"
+                class="factor-input"
+              />
+            </div>
+            <button @click="updateFactors" class="btn-update-factor" :disabled="updatingFactor">
+              {{ updatingFactor ? '更新中...' : '更新 Factor' }}
+            </button>
+            <button @click="resetFactors" class="btn-reset-factor">
+              重置為 1.0
+            </button>
+          </div>
+          <div class="factor-info">
+            <p>💡 Factor 用於修正功率數據的效率計算</p>
+            <p>公式: PGA% = (PA × Factor_A - PG) / PG × 100</p>
+            <p>公式: PGP% = (PP × Factor_P - PG) / PG × 100</p>
+          </div>
+        </div>
+
+        <!-- 功率趨勢圖表 -->
         <div class="chart-section">
           <div class="section-header">
             <h2 class="section-title">功率趨勢圖</h2>
@@ -119,6 +161,24 @@
           </div>
           <div class="chart-container">
             <canvas ref="chartCanvas"></canvas>
+          </div>
+        </div>
+
+        <!-- 效率趨勢圖 (新增) -->
+        <div class="chart-section">
+          <div class="section-header">
+            <h2 class="section-title">效率趨勢圖 (PGA% / PGP%)</h2>
+            <div class="chart-controls">
+              <select v-model="efficiencyTimeRange" @change="updateEfficiencyChart" class="time-range-select">
+                <option value="60">最近 1 小時</option>
+                <option value="180">最近 3 小時</option>
+                <option value="360">最近 6 小時</option>
+                <option value="720">最近 12 小時</option>
+              </select>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas ref="efficiencyChartCanvas"></canvas>
           </div>
         </div>
       </div>
@@ -194,8 +254,16 @@ const dataCount = ref(0)
 
 const chartCanvas = ref<HTMLCanvasElement | null>(null)
 const chartTimeRange = ref('60')
+const efficiencyChartCanvas = ref<HTMLCanvasElement | null>(null)
+const efficiencyTimeRange = ref('60')
 let chartInstance: Chart | null = null
+let efficiencyChartInstance: Chart | null = null
 let refreshInterval: NodeJS.Timeout | null = null
+
+// Factor 設定
+const factorA = ref(1.0)
+const factorP = ref(1.0)
+const updatingFactor = ref(false)
 
 // 計算效率
 const pagEfficiency = computed(() => {
@@ -356,6 +424,7 @@ async function loadHistoricalData() {
       historicalData.value = response.data.data.reverse()
       dataCount.value = response.data.data.length
       renderChart()
+      renderEfficiencyChart()  // 新增: 同時渲染效率圖
     }
   } catch (err) {
     console.error('Failed to load historical data:', err)
@@ -364,6 +433,10 @@ async function loadHistoricalData() {
 
 function updateChart() {
   loadHistoricalData()
+}
+
+function updateEfficiencyChart() {
+  renderEfficiencyChart()
 }
 
 function renderChart() {
@@ -527,6 +600,204 @@ function renderChart() {
   }
 }
 
+// 效率趨勢圖渲染
+function renderEfficiencyChart() {
+  if (!efficiencyChartCanvas.value) {
+    console.error('Efficiency canvas element not found!')
+    return
+  }
+
+  if (historicalData.value.length === 0) {
+    console.warn('No historical data for efficiency chart')
+    return
+  }
+
+  const labels = historicalData.value.map(item => {
+    const date = new Date(item.timestamp)
+    return date.toLocaleTimeString('zh-TW', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  })
+
+  const pagData = historicalData.value.map(item => item.pagEfficiency || 0)
+  const pgpData = historicalData.value.map(item => item.pgpEfficiency || 0)
+
+  // 如果圖表已存在,只更新數據
+  if (efficiencyChartInstance) {
+    efficiencyChartInstance.data.labels = labels
+    efficiencyChartInstance.data.datasets[0].data = pagData
+    efficiencyChartInstance.data.datasets[1].data = pgpData
+    efficiencyChartInstance.update('none')
+    return
+  }
+
+  // 首次創建效率圖表
+  const config: ChartConfiguration = {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'PGA 效率 (%)',
+          data: pagData,
+          borderColor: '#2196F3',
+          backgroundColor: 'rgba(33, 150, 243, 0.1)',
+          borderWidth: 3,
+          tension: 0.4,
+          fill: true,
+          pointRadius: 2,
+          pointHoverRadius: 6
+        },
+        {
+          label: 'PGP 效率 (%)',
+          data: pgpData,
+          borderColor: '#4CAF50',
+          backgroundColor: 'rgba(76, 175, 80, 0.1)',
+          borderWidth: 3,
+          tension: 0.4,
+          fill: true,
+          pointRadius: 2,
+          pointHoverRadius: 6
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        title: {
+          display: false
+        },
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            color: '#ecf0f1',
+            font: {
+              size: 14,
+              weight: 'bold'
+            },
+            padding: 15,
+            usePointStyle: true
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          titleColor: '#FFC107',
+          bodyColor: '#ecf0f1',
+          borderColor: '#FFC107',
+          borderWidth: 1,
+          padding: 12,
+          displayColors: true,
+          callbacks: {
+            label: (context) => {
+              return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}%`
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: '#b0bec5',
+            font: {
+              size: 11
+            }
+          },
+          grid: {
+            color: 'rgba(176, 190, 197, 0.1)'
+          }
+        },
+        y: {
+          ticks: {
+            color: '#b0bec5',
+            font: {
+              size: 12
+            },
+            callback: (value) => `${value}%`
+          },
+          grid: {
+            color: 'rgba(176, 190, 197, 0.1)'
+          }
+        }
+      }
+    }
+  }
+
+  try {
+    efficiencyChartInstance = new Chart(efficiencyChartCanvas.value, config)
+    console.log('Efficiency chart created successfully!')
+  } catch (error) {
+    console.error('Failed to create efficiency chart:', error)
+  }
+}
+
+// 載入 Factor 配置
+async function loadFactorConfig() {
+  try {
+    const token = localStorage.getItem('token')
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://72.61.117.219:3000'
+
+    const response = await axios.get(
+      `${apiUrl}/api/devices/${deviceId.value}/config`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
+    if (response.data.success) {
+      const config = response.data.data
+      factorA.value = config.factor_a || 1.0
+      factorP.value = config.factor_p || 1.0
+      console.log(`Factor config loaded: A=${factorA.value}, P=${factorP.value}`)
+    }
+  } catch (err) {
+    console.error('Failed to load factor config:', err)
+  }
+}
+
+// 更新 Factor 配置
+async function updateFactors() {
+  if (updatingFactor.value) return
+
+  updatingFactor.value = true
+
+  try {
+    const token = localStorage.getItem('token')
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://72.61.117.219:3000'
+
+    const response = await axios.put(
+      `${apiUrl}/api/devices/${deviceId.value}/config`,
+      {
+        factor_a: factorA.value,
+        factor_p: factorP.value
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
+    if (response.data.success) {
+      alert(`✅ Factor 更新成功!\nFactor A: ${factorA.value}\nFactor P: ${factorP.value}`)
+      // 重新載入數據以套用新 Factor
+      await refreshData()
+    }
+  } catch (err: any) {
+    console.error('Failed to update factors:', err)
+    alert(`❌ Factor 更新失敗: ${err.response?.data?.message || err.message}`)
+  } finally {
+    updatingFactor.value = false
+  }
+}
+
+// 重置 Factor 為 1.0
+function resetFactors() {
+  factorA.value = 1.0
+  factorP.value = 1.0
+}
+
 function handleBack() {
   router.push('/devices')
 }
@@ -540,6 +811,7 @@ function handleLogout() {
 
 onMounted(() => {
   loadDashboard()
+  loadFactorConfig()  // 新增: 載入 Factor 配置
 
   // 每 5 秒靜默刷新數據（不閃爍）
   refreshInterval = setInterval(() => {
@@ -553,6 +825,9 @@ onUnmounted(() => {
   }
   if (chartInstance) {
     chartInstance.destroy()
+  }
+  if (efficiencyChartInstance) {
+    efficiencyChartInstance.destroy()
   }
 })
 </script>
@@ -1076,5 +1351,109 @@ onUnmounted(() => {
   .card-value {
     font-size: 28px;
   }
+}
+
+/* ========================================
+   Factor Section
+   ======================================== */
+.factor-section {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 25px;
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.factor-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+}
+
+.factor-input-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.factor-input-group label {
+  color: #ecf0f1;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.factor-input {
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ecf0f1;
+  border: 2px solid #FFC107;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  width: 100px;
+  text-align: center;
+  transition: all 0.3s;
+}
+
+.factor-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.3);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.btn-update-factor,
+.btn-reset-factor {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-update-factor {
+  background: #4CAF50;
+  color: white;
+}
+
+.btn-update-factor:hover:not(:disabled) {
+  background: #45a049;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+}
+
+.btn-update-factor:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-reset-factor {
+  background: #9E9E9E;
+  color: white;
+}
+
+.btn-reset-factor:hover {
+  background: #757575;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(158, 158, 158, 0.3);
+}
+
+.factor-info {
+  margin-top: 15px;
+  padding: 15px;
+  background: rgba(255, 193, 7, 0.1);
+  border-left: 4px solid #FFC107;
+  border-radius: 6px;
+}
+
+.factor-info p {
+  margin: 5px 0;
+  color: #ecf0f1;
+  font-size: 13px;
+  line-height: 1.6;
 }
 </style>
