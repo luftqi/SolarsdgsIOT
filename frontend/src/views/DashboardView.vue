@@ -542,8 +542,8 @@ function renderChart() {
   // 根據時間範圍自適應標籤格式
   const labels = historicalData.value.map(item => {
     const date = new Date(item.timestamp)
-    const selectedInterval = timeGranularityOptions.find(opt => opt.value === chartTimeRange.value)
-    const totalMinutes = selectedInterval ? selectedInterval.interval * 60 : 60
+    const intervalMinutes = parseInt(chartTimeRange.value)
+    const totalMinutes = intervalMinutes * 60  // 總時間範圍（分鐘）
 
     // 根據時間範圍決定標籤格式
     if (totalMinutes >= 1440) {
@@ -722,8 +722,8 @@ function renderEfficiencyChart() {
   // 根據時間範圍自適應標籤格式（與功率圖表一致）
   const labels = historicalData.value.map(item => {
     const date = new Date(item.timestamp)
-    const selectedInterval = timeGranularityOptions.find(opt => opt.value === chartTimeRange.value)
-    const totalMinutes = selectedInterval ? selectedInterval.interval * 60 : 60
+    const intervalMinutes = parseInt(chartTimeRange.value)
+    const totalMinutes = intervalMinutes * 60  // 總時間範圍（分鐘）
 
     // 根據時間範圍決定標籤格式
     if (totalMinutes >= 1440) {
