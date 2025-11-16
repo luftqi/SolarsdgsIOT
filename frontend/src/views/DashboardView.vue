@@ -832,11 +832,10 @@ async function downloadPowerData() {
 
     // 獲取數據
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
-    const response = await axios.get(`${apiUrl}/api/power-data/device/${deviceId.value}`, {
+    const response = await axios.get(`${apiUrl}/api/power-data/device/${deviceId.value}/range`, {
       params: {
         startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-        limit: 10000
+        endTime: endTime.toISOString()
       }
     })
 
