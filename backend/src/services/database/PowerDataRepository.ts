@@ -305,7 +305,7 @@ export class PowerDataRepository {
         AND timestamp BETWEEN $2 AND $3
       )
       SELECT
-        MIN(timestamp) + (bucket_index * interval '${intervalMinutes} minutes') AS bucket_time,
+        (MIN(timestamp) AT TIME ZONE 'UTC' + (bucket_index * interval '${intervalMinutes} minutes')) AS bucket_time,
         AVG(pg) AS avg_pg,
         AVG(pa) AS avg_pa,
         AVG(pp) AS avg_pp,
