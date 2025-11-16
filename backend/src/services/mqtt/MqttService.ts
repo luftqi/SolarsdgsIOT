@@ -13,6 +13,7 @@ import { DataParser } from './DataParser';
 import { GpsParser } from './GpsParser';
 import { PowerDataRepository } from '../database/PowerDataRepository';
 import { GpsLocationRepository } from '../database/GpsLocationRepository';
+import { DeviceRepository } from '../database/DeviceRepository';
 import { DatabaseService } from '../database/DatabaseService';
 import type { FactorConfig } from '../../types/power.types';
 
@@ -23,19 +24,22 @@ export class MqttService extends EventEmitter {
   private readonly gpsParser: GpsParser;
   private readonly powerDataRepo: PowerDataRepository;
   private readonly gpsLocationRepo: GpsLocationRepository;
+  private readonly deviceRepo: DeviceRepository;
 
   // Factor 配置緩存（device_id -> FactorConfig）
   private factorCache = new Map<string, FactorConfig>();
 
   constructor(
     powerDataRepo: PowerDataRepository,
-    gpsLocationRepo: GpsLocationRepository
+    gpsLocationRepo: GpsLocationRepository,
+    deviceRepo: DeviceRepository
   ) {
     super(); // 呼叫 EventEmitter 建構子
     this.dataParser = new DataParser();
     this.gpsParser = new GpsParser();
     this.powerDataRepo = powerDataRepo;
     this.gpsLocationRepo = gpsLocationRepo;
+    this.deviceRepo = deviceRepo;
   }
 
   /**
@@ -188,7 +192,7 @@ export class MqttService extends EventEmitter {
    */
   private async handleGpsData(deviceId: string, payload: Buffer): Promise<void> {
     try {
-      // 解析 GPS 數據
+      // 解析 GPS 數據 (包含自動推算的時區)
       const gpsData = await this.gpsParser.parse(deviceId, payload);
 
       if (!gpsData) {
@@ -196,9 +200,13 @@ export class MqttService extends EventEmitter {
         return;
       }
 
-      // 儲存到資料庫
+      // 儲存 GPS 位置到資料庫
       await this.gpsLocationRepo.upsertGpsLocation(gpsData);
-      this.logger.info(`✅ GPS location saved: ${deviceId} @ (${gpsData.latitude}, ${gpsData.longitude})`);
+      this.logger.info(`✅ GPS location saved: ${deviceId} @ (${gpsData.latitude}, ${gpsData.longitude}), 時區: ${gpsData.timezone}`);
+
+      // 更新設備時區 (根據 GPS 推算的時區)
+      await this.deviceRepo.updateTimezone(deviceId, gpsData.timezone);
+      this.logger.info(`✅ Device timezone updated: ${deviceId} → ${gpsData.timezone}`);
 
       // 更新設備狀態為 online 並更新 last_seen
       await this.updateDeviceStatus(deviceId, 'online');

@@ -20,6 +20,7 @@ import { Logger } from './utils/logger';
 import { DatabaseService } from './services/database/DatabaseService';
 import { PowerDataRepository } from './services/database/PowerDataRepository';
 import { GpsLocationRepository } from './services/database/GpsLocationRepository';
+import { DeviceRepository } from './services/database/DeviceRepository';
 import { CustomerRepository } from './services/database/CustomerRepository';
 import { MqttService } from './services/mqtt/MqttService';
 import { WebSocketService } from './services/realtime/WebSocketService';
@@ -56,6 +57,7 @@ async function main() {
     logger.info('Step 2: Creating repositories...');
     const powerDataRepo = new PowerDataRepository(pool);
     const gpsLocationRepo = new GpsLocationRepository(pool);
+    const deviceRepo = new DeviceRepository(pool);
     const customerRepo = new CustomerRepository(pool);
 
     // === 2.5. 創建 Auth Service ===
@@ -64,7 +66,7 @@ async function main() {
 
     // === 3. 初始化 MQTT 服務 ===
     logger.info('Step 3: Initializing MQTT service...');
-    const mqttService = new MqttService(powerDataRepo, gpsLocationRepo);
+    const mqttService = new MqttService(powerDataRepo, gpsLocationRepo, deviceRepo);
 
     await mqttService.connect();
 

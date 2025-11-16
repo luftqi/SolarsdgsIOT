@@ -23,13 +23,14 @@ export class GpsLocationRepository {
   async upsertGpsLocation(gpsData: ParsedGpsData): Promise<number> {
     const query = `
       INSERT INTO gps_locations
-      (device_id, latitude, longitude, altitude, satellites, timestamp)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      (device_id, latitude, longitude, altitude, satellites, timezone, timestamp)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       ON CONFLICT (device_id, timestamp) DO UPDATE SET
         latitude = EXCLUDED.latitude,
         longitude = EXCLUDED.longitude,
         altitude = EXCLUDED.altitude,
-        satellites = EXCLUDED.satellites
+        satellites = EXCLUDED.satellites,
+        timezone = EXCLUDED.timezone
       RETURNING id;
     `;
 
@@ -39,11 +40,12 @@ export class GpsLocationRepository {
       gpsData.longitude,
       gpsData.altitude,
       gpsData.satellites,
+      gpsData.timezone,  // 加入時區
       gpsData.timestamp
     ];
 
     this.logger.info(
-      `UPSERT GPS 位置: ${gpsData.deviceId} @ (${gpsData.latitude}, ${gpsData.longitude})`
+      `UPSERT GPS 位置: ${gpsData.deviceId} @ (${gpsData.latitude}, ${gpsData.longitude}), 時區: ${gpsData.timezone}`
     );
 
     try {
