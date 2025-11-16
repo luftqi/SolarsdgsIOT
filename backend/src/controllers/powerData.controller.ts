@@ -193,4 +193,57 @@ export class PowerDataController {
       },
     });
   }
+
+  /**
+   * GET /api/power-data/device/:deviceId/aggregated
+   *
+   * 獲取設備的聚合功率數據（固定資料點數，按時間間隔平均）
+   *
+   * Query params:
+   * - interval: 時間間隔（分鐘），例如 1, 5, 10, 30, 60, 360, 1440
+   * - points: 資料點數量（預設 60）
+   */
+  async getAggregated(req: Request, res: Response): Promise<void> {
+    const { deviceId } = req.params;
+    const interval = parseInt(req.query.interval as string);
+    const points = parseInt(req.query.points as string) || 60;
+
+    // 驗證參數
+    if (!interval || isNaN(interval) || interval <= 0) {
+      throw new BadRequestError('interval must be a positive number (minutes)');
+    }
+
+    if (isNaN(points) || points <= 0 || points > 1000) {
+      throw new BadRequestError('points must be between 1 and 1000');
+    }
+
+    // 計算時間範圍：從現在往前推算
+    const endTime = new Date();
+    const startTime = new Date(endTime.getTime() - interval * points * 60 * 1000);
+
+    logger.info(
+      `Getting aggregated data for device ${deviceId}: interval=${interval}min, points=${points}, range=${startTime.toISOString()} to ${endTime.toISOString()}`
+    );
+
+    const data = await this.powerDataRepo.getAggregatedData(
+      deviceId,
+      startTime,
+      endTime,
+      interval,
+      points
+    );
+
+    res.json({
+      success: true,
+      data: {
+        deviceId,
+        interval,
+        points,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        count: data.length,
+        records: data,
+      },
+    });
+  }
 }

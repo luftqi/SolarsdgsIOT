@@ -82,4 +82,18 @@ router.get(
   asyncHandler(controller.getDailySummary.bind(controller))
 );
 
+/**
+ * GET /api/power-data/device/:deviceId/aggregated
+ *
+ * 獲取設備的聚合功率數據（固定資料點數，按時間間隔平均）
+ *
+ * Query params:
+ * - interval: number (時間間隔，單位：分鐘，例如 1, 5, 10, 30, 60, 360, 1440)
+ * - points: number (資料點數量，預設 60，最大 1000)
+ */
+router.get(
+  '/device/:deviceId/aggregated',
+  asyncHandler(controller.getAggregated.bind(controller))
+);
+
 export default router;

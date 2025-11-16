@@ -272,4 +272,70 @@ export class PowerDataRepository {
       throw error;
     }
   }
+
+  /**
+   * 獲取聚合數據（按時間間隔分組並平均）
+   * @param deviceId 設備 ID
+   * @param startTime 開始時間
+   * @param endTime 結束時間
+   * @param intervalMinutes 時間間隔（分鐘）
+   * @param points 資料點數量（預設 60）
+   * @returns 聚合後的功率數據
+   */
+  async getAggregatedData(
+    deviceId: string,
+    startTime: Date,
+    endTime: Date,
+    intervalMinutes: number,
+    points: number = 60
+  ): Promise<any[]> {
+    // 使用 PostgreSQL 的時間分組函數
+    const query = `
+      WITH time_buckets AS (
+        SELECT
+          timestamp,
+          pg,
+          pa,
+          pp,
+          pga_efficiency,
+          pgp_efficiency,
+          FLOOR(EXTRACT(EPOCH FROM (timestamp - $2)) / (60 * $4)) AS bucket_index
+        FROM power_data
+        WHERE device_id = $1
+        AND timestamp BETWEEN $2 AND $3
+      )
+      SELECT
+        MIN(timestamp) + (bucket_index * interval '${intervalMinutes} minutes') AS bucket_time,
+        AVG(pg) AS avg_pg,
+        AVG(pa) AS avg_pa,
+        AVG(pp) AS avg_pp,
+        AVG(pga_efficiency) AS avg_pag,
+        AVG(pgp_efficiency) AS avg_pgp,
+        MIN(pg) AS min_pg,
+        MAX(pg) AS max_pg,
+        COUNT(*) AS sample_count
+      FROM time_buckets
+      GROUP BY bucket_index
+      ORDER BY bucket_index
+      LIMIT $5;
+    `;
+
+    this.logger.info(
+      `查詢聚合數據: ${deviceId} (間隔: ${intervalMinutes}分鐘, 點數: ${points})`
+    );
+
+    try {
+      const result: QueryResult = await this.pool.query(query, [
+        deviceId,
+        startTime,
+        endTime,
+        intervalMinutes,
+        points
+      ]);
+      return result.rows;
+    } catch (error: any) {
+      this.logger.error(`查詢聚合數據失敗: ${error.message}`, error);
+      throw error;
+    }
+  }
 }
