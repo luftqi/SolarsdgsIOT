@@ -50,6 +50,7 @@ export class DeviceController {
         d.device_name,
         d.device_type,
         d.status,
+        d.timezone,
         d.last_seen,
         d.created_at,
         d.updated_at,
@@ -88,6 +89,7 @@ export class DeviceController {
         d.device_name,
         d.device_type,
         d.status,
+        d.timezone,
         d.last_seen,
         d.created_at,
         d.updated_at,
@@ -159,6 +161,7 @@ export class DeviceController {
         device_name,
         device_type,
         status,
+        timezone,
         last_seen
       FROM devices
       WHERE device_id = $1;

@@ -301,6 +301,7 @@ interface DeviceInfo {
   device_name?: string
   device_type?: string
   status: string
+  timezone?: string  // 新增: 設備時區 (例如: Asia/Taipei)
   last_seen?: string
 }
 
@@ -353,6 +354,11 @@ const ppgEfficiency = computed(() => {
     : latestData.value.pgpEfficiency
 })
 
+// 設備時區 (從 API 獲取，預設使用台北時區)
+const deviceTimezone = computed(() => {
+  return deviceInfo.value?.timezone || 'Asia/Taipei'
+})
+
 // 格式化函數
 function formatNumber(value?: number): string {
   if (value === undefined || value === null) return '0'
@@ -390,7 +396,7 @@ function formatDateTime(dateStr?: string): string {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
-      timeZone: 'Asia/Taipei'  // 強制使用台北時區
+      timeZone: deviceTimezone.value  // 使用設備時區
     })
   } catch {
     return 'N/A'
@@ -548,7 +554,7 @@ function renderChart() {
     return
   }
 
-  // 根據時間範圍自適應標籤格式（強制使用台北時區 UTC+8）
+  // 根據時間範圍自適應標籤格式（使用設備所在時區）
   const labels = historicalData.value.map(item => {
     const date = new Date(item.timestamp)
     const intervalMinutes = parseInt(chartTimeRange.value)
@@ -562,14 +568,14 @@ function renderChart() {
         day: '2-digit',
         hour: '2-digit',
         minute: '2-digit',
-        timeZone: 'Asia/Taipei'  // 強制使用台北時區
+        timeZone: deviceTimezone.value  // 使用設備時區
       })
     } else if (totalMinutes >= 360) {
       // >= 6 小時：顯示 時:分
       return date.toLocaleTimeString('zh-TW', {
         hour: '2-digit',
         minute: '2-digit',
-        timeZone: 'Asia/Taipei'  // 強制使用台北時區
+        timeZone: deviceTimezone.value  // 使用設備時區
       })
     } else {
       // < 6 小時：顯示 時:分:秒
@@ -577,7 +583,7 @@ function renderChart() {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        timeZone: 'Asia/Taipei'  // 強制使用台北時區
+        timeZone: deviceTimezone.value  // 使用設備時區
       })
     }
   })
@@ -731,7 +737,7 @@ function renderEfficiencyChart() {
     return
   }
 
-  // 根據時間範圍自適應標籤格式（與功率圖表一致，強制使用台北時區）
+  // 根據時間範圍自適應標籤格式（與功率圖表一致，使用設備所在時區）
   const labels = historicalData.value.map(item => {
     const date = new Date(item.timestamp)
     const intervalMinutes = parseInt(chartTimeRange.value)
@@ -745,14 +751,14 @@ function renderEfficiencyChart() {
         day: '2-digit',
         hour: '2-digit',
         minute: '2-digit',
-        timeZone: 'Asia/Taipei'  // 強制使用台北時區
+        timeZone: deviceTimezone.value  // 使用設備時區
       })
     } else if (totalMinutes >= 360) {
       // >= 6 小時：顯示 時:分
       return date.toLocaleTimeString('zh-TW', {
         hour: '2-digit',
         minute: '2-digit',
-        timeZone: 'Asia/Taipei'  // 強制使用台北時區
+        timeZone: deviceTimezone.value  // 使用設備時區
       })
     } else {
       // < 6 小時：顯示 時:分:秒
@@ -760,7 +766,7 @@ function renderEfficiencyChart() {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        timeZone: 'Asia/Taipei'  // 強制使用台北時區
+        timeZone: deviceTimezone.value  // 使用設備時區
       })
     }
   })
@@ -1021,7 +1027,7 @@ async function downloadPowerData() {
     ]
 
     const rows = records.map((item: any) => [
-      new Date(item.timestamp).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }),
+      new Date(item.timestamp).toLocaleString('zh-TW', { timeZone: deviceTimezone.value }),
       item.device_id,
       item.pg,
       item.pa,
