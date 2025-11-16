@@ -190,16 +190,13 @@ async function loadDevices() {
  * 選擇設備
  */
 function selectDevice(device: Device) {
-  if (device.status !== 'online') {
-    // 設備離線提示
-    alert(`設備 ${device.device_id} 目前離線，無法監控`)
-    return
-  }
+  // Phase 2.4: 允許進入 Dashboard，即使設備離線
+  // 用戶仍然可以查看歷史數據和設備資訊
 
   // 儲存選中的設備 ID
   localStorage.setItem('selectedDeviceId', device.device_id)
 
-  console.log('✅ 選擇設備:', device.device_id)
+  console.log('✅ 選擇設備:', device.device_id, '- 狀態:', device.status)
 
   // 跳轉到儀表板
   router.push('/dashboard')
