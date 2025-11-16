@@ -365,7 +365,21 @@ function updateChart() {
 }
 
 function renderChart() {
-  if (!chartCanvas.value || historicalData.value.length === 0) return
+  console.log('renderChart called', {
+    hasCanvas: !!chartCanvas.value,
+    dataLength: historicalData.value.length,
+    hasChartInstance: !!chartInstance
+  })
+
+  if (!chartCanvas.value) {
+    console.error('Canvas element not found!')
+    return
+  }
+
+  if (historicalData.value.length === 0) {
+    console.warn('No historical data to render')
+    return
+  }
 
   const labels = historicalData.value.map(item => {
     const date = new Date(item.timestamp)
@@ -380,8 +394,11 @@ function renderChart() {
   const paData = historicalData.value.map(item => item.pa)
   const ppData = historicalData.value.map(item => item.pp)
 
+  console.log('Chart data prepared', { labels: labels.slice(0, 3), pgData: pgData.slice(0, 3) })
+
   // 如果圖表已存在，只更新數據（避免閃爍）
   if (chartInstance) {
+    console.log('Updating existing chart')
     chartInstance.data.labels = labels
     chartInstance.data.datasets[0].data = pgData
     chartInstance.data.datasets[1].data = paData
@@ -391,6 +408,7 @@ function renderChart() {
   }
 
   // 首次創建圖表
+  console.log('Creating new chart')
   const config: ChartConfiguration = {
     type: 'line',
     data: {
@@ -499,7 +517,12 @@ function renderChart() {
     }
   }
 
-  chartInstance = new Chart(chartCanvas.value, config)
+  try {
+    chartInstance = new Chart(chartCanvas.value, config)
+    console.log('Chart created successfully!', chartInstance)
+  } catch (error) {
+    console.error('Failed to create chart:', error)
+  }
 }
 
 function handleBack() {
