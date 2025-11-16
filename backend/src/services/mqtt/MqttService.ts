@@ -13,6 +13,7 @@ import { DataParser } from './DataParser';
 import { GpsParser } from './GpsParser';
 import { PowerDataRepository } from '../database/PowerDataRepository';
 import { GpsLocationRepository } from '../database/GpsLocationRepository';
+import { DatabaseService } from '../database/DatabaseService';
 import type { FactorConfig } from '../../types/power.types';
 
 export class MqttService extends EventEmitter {
@@ -163,6 +164,9 @@ export class MqttService extends EventEmitter {
           await this.powerDataRepo.batchInsertPowerData(result.sqlData);
           this.logger.info(`✅ Batch power data saved: ${deviceId} (${result.sqlData.length} records)`);
         }
+
+        // 更新設備狀態為 online 並更新 last_seen
+        await this.updateDeviceStatus(deviceId, 'online');
       }
 
       // 發送事件給 WebSocket 服務 (使用第一筆 sqlData)
@@ -195,6 +199,9 @@ export class MqttService extends EventEmitter {
       // 儲存到資料庫
       await this.gpsLocationRepo.upsertGpsLocation(gpsData);
       this.logger.info(`✅ GPS location saved: ${deviceId} @ (${gpsData.latitude}, ${gpsData.longitude})`);
+
+      // 更新設備狀態為 online 並更新 last_seen
+      await this.updateDeviceStatus(deviceId, 'online');
 
       // TODO: 發送到 WebSocket (Dashboard 地圖更新)
       // const dashboardData = this.gpsParser.formatForDashboard(gpsData);
@@ -264,6 +271,27 @@ export class MqttService extends EventEmitter {
   setFactorConfig(deviceId: string, config: FactorConfig): void {
     this.factorCache.set(deviceId, config);
     this.logger.info(`Factor config updated: ${deviceId} (A=${config.factor_a}, P=${config.factor_p})`);
+  }
+
+  /**
+   * 更新設備狀態
+   */
+  private async updateDeviceStatus(deviceId: string, status: 'online' | 'offline'): Promise<void> {
+    try {
+      const db = DatabaseService.getInstance();
+      const pool = db.getPool();
+
+      const query = `
+        UPDATE devices
+        SET status = $1, last_seen = NOW()
+        WHERE device_id = $2
+      `;
+
+      await pool.query(query, [status, deviceId]);
+      this.logger.debug(`Device ${deviceId} status updated: ${status}`);
+    } catch (error: any) {
+      this.logger.error(`Failed to update device status for ${deviceId}`, error);
+    }
   }
 
   /**
