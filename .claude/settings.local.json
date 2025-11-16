@@ -97,7 +97,8 @@
       "Bash(npx vue-tsc:*)",
       "Bash(for:*)",
       "Bash(do echo \"上傳第 $i 張圖像...\")",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []

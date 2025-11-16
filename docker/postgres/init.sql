@@ -7,13 +7,13 @@
 CREATE TABLE IF NOT EXISTS power_data (
     id SERIAL PRIMARY KEY,
     device_id VARCHAR(50) NOT NULL,
-    timestamp TIMESTAMP NOT NULL,
+    timestamp TIMESTAMPTZ NOT NULL,         -- 改為 TIMESTAMPTZ (儲存 UTC)
     pg INTEGER NOT NULL,                    -- 發電功率 (Generation Power) in Watts
     pa INTEGER NOT NULL,                    -- 負載 A 功率 (Load A Power) in Watts
     pp INTEGER NOT NULL,                    -- 負載 P 功率 (Load P Power) in Watts
     pga_efficiency DECIMAL(5,2),            -- 負載 A 效率 (PAG) in %
     pgp_efficiency DECIMAL(5,2),            -- 負載 P 效率 (PPG) in %
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 
     -- 唯一約束：同一設備同一時間只能有一條記錄
     CONSTRAINT unique_device_timestamp UNIQUE (device_id, timestamp)
@@ -32,8 +32,9 @@ CREATE TABLE IF NOT EXISTS gps_locations (
     longitude DECIMAL(11,8) NOT NULL,       -- 經度 (-180 ~ 180)
     altitude DECIMAL(8,2) DEFAULT 0,        -- 高度 (公尺)
     satellites INTEGER DEFAULT 0,           -- 衛星數量
-    timestamp TIMESTAMP NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    timezone VARCHAR(50) DEFAULT 'UTC',     -- 時區 (例如: Asia/Taipei)
+    timestamp TIMESTAMPTZ NOT NULL,         -- 改為 TIMESTAMPTZ (儲存 UTC)
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 
     -- 唯一約束：同一設備同一時間只能有一條位置記錄
     CONSTRAINT unique_gps_device_timestamp UNIQUE (device_id, timestamp)
@@ -51,9 +52,10 @@ CREATE TABLE IF NOT EXISTS devices (
     device_name VARCHAR(100),
     device_type VARCHAR(50) DEFAULT 'solar',
     status VARCHAR(20) DEFAULT 'offline',   -- online, offline, error
-    last_seen TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    timezone VARCHAR(50) DEFAULT 'UTC',     -- 設備時區 (根據 GPS 自動推算)
+    last_seen TIMESTAMPTZ,                  -- 改為 TIMESTAMPTZ
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 索引優化
@@ -68,7 +70,7 @@ CREATE TABLE IF NOT EXISTS device_config (
     factor_p DECIMAL(5,2) DEFAULT 1.0,      -- PP 修正係數
     pizero2_on INTEGER DEFAULT 0,           -- Pi Zero 2W 開機時間
     pizero2_off INTEGER DEFAULT 0,          -- Pi Zero 2W 關機時間
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 
     -- 外鍵約束
     CONSTRAINT fk_device_config_device

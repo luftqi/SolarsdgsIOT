@@ -22,6 +22,7 @@ export interface ParsedGpsData {
   longitude: number;  // 經度 (-180 ~ 180)
   altitude: number;   // 高度 (公尺)
   satellites: number; // 衛星數量
+  timezone: string;   // 時區 (例如: Asia/Taipei)
   timestamp: Date;
 }
 
@@ -35,6 +36,7 @@ export interface GpsLocationRecord {
   longitude: number;
   altitude: number;
   satellites: number;
+  timezone: string;   // 時區 (例如: Asia/Taipei)
   timestamp: Date;
   created_at?: Date;
 }

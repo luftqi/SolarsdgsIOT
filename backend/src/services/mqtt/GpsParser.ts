@@ -12,6 +12,7 @@
 // =================================================================
 
 import { Logger } from '../../utils/logger';
+import { getTimezoneFromCoordinates } from '../../utils/timezoneUtils';
 import type {
   ParsedGpsData,
   GpsDashboardData,
@@ -78,19 +79,23 @@ export class GpsParser {
       return null;
     }
 
-    // === 步驟 7: 記錄成功 ===
+    // === 步驟 7: 根據座標推算時區 ===
+    const timezone = getTimezoneFromCoordinates(latitude, longitude);
+
+    // === 步驟 8: 記錄成功 ===
     this.logger.info(
       `✅ 座標: (${latitude.toFixed(6)}, ${longitude.toFixed(6)}), ` +
-      `高度: ${altitude}m, 衛星: ${satellites}`
+      `高度: ${altitude}m, 衛星: ${satellites}, 時區: ${timezone}`
     );
 
-    // === 步驟 8: 返回解析結果 ===
+    // === 步驟 9: 返回解析結果 ===
     return {
       deviceId,
       latitude,
       longitude,
       altitude: altitude || 0,
       satellites: satellites || 0,
+      timezone,  // 加入時區資訊
       timestamp: new Date()
     };
   }
