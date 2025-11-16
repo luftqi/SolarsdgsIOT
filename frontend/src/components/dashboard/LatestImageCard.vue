@@ -65,6 +65,33 @@ function openFullImage(type: 'rgb' | 'thermal'): void {
   window.open(url, '_blank');
 }
 
+// 下載圖像
+async function downloadImages(): Promise<void> {
+  if (!latestImage.value) return;
+
+  const rgbUrl = latestRgbThumbnailUrl.value.replace('_thumb.jpg', '.jpg').replace('/thumbnails', '');
+  const thermalUrl = latestThermalThumbnailUrl.value.replace('_thumb.jpg', '.jpg').replace('/thumbnails', '');
+  const timestamp = new Date(latestImage.value.capturedAt).toISOString().replace(/[:.]/g, '-');
+
+  // 下載 RGB 圖像
+  const rgbLink = document.createElement('a');
+  rgbLink.href = rgbUrl;
+  rgbLink.download = `${props.deviceId}_rgb_${timestamp}.jpg`;
+  document.body.appendChild(rgbLink);
+  rgbLink.click();
+  document.body.removeChild(rgbLink);
+
+  // 延遲下載熱影像 (避免瀏覽器阻擋多個下載)
+  setTimeout(() => {
+    const thermalLink = document.createElement('a');
+    thermalLink.href = thermalUrl;
+    thermalLink.download = `${props.deviceId}_thermal_${timestamp}.jpg`;
+    document.body.appendChild(thermalLink);
+    thermalLink.click();
+    document.body.removeChild(thermalLink);
+  }, 500);
+}
+
 // 初始載入
 onMounted(() => {
   loadImage();
@@ -85,9 +112,14 @@ watch(() => props.deviceId, () => {
   <div class="latest-image-card">
     <div class="card-header">
       <h3>📷 最新圖像</h3>
-      <button @click="loadImage" :disabled="loading" class="refresh-btn">
-        {{ loading ? '載入中...' : '刷新' }}
-      </button>
+      <div class="header-buttons">
+        <button @click="downloadImages" :disabled="!hasLatestImage" class="download-btn">
+          📥 下載圖像
+        </button>
+        <button @click="loadImage" :disabled="loading" class="refresh-btn">
+          {{ loading ? '載入中...' : '刷新' }}
+        </button>
+      </div>
     </div>
 
     <!-- 錯誤提示 -->
@@ -184,9 +216,14 @@ watch(() => props.deviceId, () => {
   color: #333;
 }
 
-.refresh-btn {
+.header-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.refresh-btn,
+.download-btn {
   padding: 6px 16px;
-  background: #4CAF50;
   color: white;
   border: none;
   border-radius: 4px;
@@ -195,11 +232,28 @@ watch(() => props.deviceId, () => {
   transition: background 0.3s;
 }
 
+.refresh-btn {
+  background: #4CAF50;
+}
+
 .refresh-btn:hover:not(:disabled) {
   background: #45a049;
 }
 
 .refresh-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.download-btn {
+  background: #2196F3;
+}
+
+.download-btn:hover:not(:disabled) {
+  background: #0b7dda;
+}
+
+.download-btn:disabled {
   background: #ccc;
   cursor: not-allowed;
 }

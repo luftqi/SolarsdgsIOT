@@ -156,7 +156,13 @@
                 <option value="180">最近 3 小時</option>
                 <option value="360">最近 6 小時</option>
                 <option value="720">最近 12 小時</option>
+                <option value="1440">最近 1 天</option>
+                <option value="4320">最近 3 天</option>
+                <option value="10080">最近 1 週</option>
               </select>
+              <button @click="downloadPowerData" class="btn-download" :disabled="downloadingData">
+                {{ downloadingData ? '📥 下載中...' : '📥 下載資料 (CSV)' }}
+              </button>
             </div>
           </div>
           <div class="chart-container">
@@ -174,6 +180,9 @@
                 <option value="180">最近 3 小時</option>
                 <option value="360">最近 6 小時</option>
                 <option value="720">最近 12 小時</option>
+                <option value="1440">最近 1 天</option>
+                <option value="4320">最近 3 天</option>
+                <option value="10080">最近 1 週</option>
               </select>
             </div>
           </div>
@@ -272,6 +281,9 @@ let refreshInterval: NodeJS.Timeout | null = null
 const factorA = ref(1.0)
 const factorP = ref(1.0)
 const updatingFactor = ref(false)
+
+// 下載狀態
+const downloadingData = ref(false)
 
 // 計算效率
 const pagEfficiency = computed(() => {
@@ -807,6 +819,87 @@ function resetFactors() {
   factorP.value = 1.0
 }
 
+// 下載發電資料 (CSV)
+async function downloadPowerData() {
+  if (downloadingData.value) return
+  downloadingData.value = true
+
+  try {
+    // 計算時間範圍
+    const minutes = parseInt(chartTimeRange.value)
+    const endTime = new Date()
+    const startTime = new Date(endTime.getTime() - minutes * 60 * 1000)
+
+    // 獲取數據
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+    const response = await axios.get(`${apiUrl}/api/power-data/device/${deviceId.value}`, {
+      params: {
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        limit: 10000
+      }
+    })
+
+    const data = response.data.data || []
+
+    if (data.length === 0) {
+      alert('沒有可下載的數據')
+      return
+    }
+
+    // 轉換為 CSV
+    const headers = [
+      'Timestamp',
+      'Device ID',
+      'PG (W)',
+      'PA (W)',
+      'PP (W)',
+      'PGA Efficiency (%)',
+      'PGP Efficiency (%)'
+    ]
+
+    const rows = data.map((item: PowerData) => [
+      new Date(item.timestamp).toLocaleString('zh-TW'),
+      item.deviceId,
+      item.pg,
+      item.pa,
+      item.pp,
+      item.pagEfficiency?.toFixed(2) || '0.00',
+      item.pgpEfficiency?.toFixed(2) || '0.00'
+    ])
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row: any[]) => row.join(','))
+    ].join('\n')
+
+    // 下載檔案
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const timeLabel = chartTimeRange.value === '60' ? '1小時' :
+                      chartTimeRange.value === '180' ? '3小時' :
+                      chartTimeRange.value === '360' ? '6小時' :
+                      chartTimeRange.value === '720' ? '12小時' :
+                      chartTimeRange.value === '1440' ? '1天' :
+                      chartTimeRange.value === '4320' ? '3天' :
+                      chartTimeRange.value === '10080' ? '1週' : chartTimeRange.value + '分鐘'
+    link.href = url
+    link.download = `${deviceId.value}_power_data_${timeLabel}_${new Date().toISOString().split('T')[0]}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    console.log(`✅ CSV 下載成功 - ${data.length} 筆資料`)
+  } catch (err: any) {
+    console.error('❌ CSV 下載失敗:', err)
+    alert('下載失敗: ' + (err.message || '未知錯誤'))
+  } finally {
+    downloadingData.value = false
+  }
+}
+
 function handleBack() {
   router.push('/devices')
 }
@@ -1225,6 +1318,31 @@ onUnmounted(() => {
 .time-range-select:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.3);
+}
+
+.btn-download {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 8px rgba(33, 150, 243, 0.3);
+}
+
+.btn-download:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(33, 150, 243, 0.4);
+}
+
+.btn-download:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .chart-container {
