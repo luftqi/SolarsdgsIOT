@@ -34,6 +34,39 @@
 
       <!-- Dashboard 主內容 -->
       <div v-else class="dashboard-main">
+        <!-- 設備資訊與狀態 (移到最上方) -->
+        <div class="info-section">
+          <h2 class="section-title">設備資訊</h2>
+          <div class="info-grid">
+            <div class="info-card">
+              <div class="info-label">設備名稱</div>
+              <div class="info-value">{{ deviceInfo?.device_name || 'N/A' }}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">設備類型</div>
+              <div class="info-value">{{ deviceInfo?.device_type || 'N/A' }}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">設備狀態</div>
+              <div class="info-value" :class="getStatusClass(deviceInfo?.status)">
+                {{ getStatusText(deviceInfo?.status) }}
+              </div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">最後更新</div>
+              <div class="info-value">{{ formatDateTime(latestData?.timestamp) }}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">數據總數</div>
+              <div class="info-value">{{ dataCount }} 筆</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">自動刷新</div>
+              <div class="info-value">每 5 秒</div>
+            </div>
+          </div>
+        </div>
+
         <!-- 即時功率卡片 -->
         <div class="power-section">
           <h2 class="section-title">即時功率數據</h2>
@@ -86,39 +119,6 @@
           </div>
           <div class="chart-container">
             <canvas ref="chartCanvas"></canvas>
-          </div>
-        </div>
-
-        <!-- 設備資訊與狀態 -->
-        <div class="info-section">
-          <h2 class="section-title">設備資訊</h2>
-          <div class="info-grid">
-            <div class="info-card">
-              <div class="info-label">設備名稱</div>
-              <div class="info-value">{{ deviceInfo?.device_name || 'N/A' }}</div>
-            </div>
-            <div class="info-card">
-              <div class="info-label">設備類型</div>
-              <div class="info-value">{{ deviceInfo?.device_type || 'N/A' }}</div>
-            </div>
-            <div class="info-card">
-              <div class="info-label">設備狀態</div>
-              <div class="info-value" :class="getStatusClass(deviceInfo?.status)">
-                {{ getStatusText(deviceInfo?.status) }}
-              </div>
-            </div>
-            <div class="info-card">
-              <div class="info-label">最後更新</div>
-              <div class="info-value">{{ formatDateTime(latestData?.timestamp) }}</div>
-            </div>
-            <div class="info-card">
-              <div class="info-label">數據總數</div>
-              <div class="info-value">{{ dataCount }} 筆</div>
-            </div>
-            <div class="info-card">
-              <div class="info-label">自動刷新</div>
-              <div class="info-value">每 5 秒</div>
-            </div>
           </div>
         </div>
       </div>
