@@ -443,15 +443,12 @@ function renderChart() {
         x: {
           ticks: {
             color: '#b0bec5',
-            maxRotation: 45,
-            minRotation: 45,
             font: {
               size: 11
             }
           },
           grid: {
-            color: 'rgba(176, 190, 197, 0.1)',
-            drawBorder: false
+            color: 'rgba(176, 190, 197, 0.1)'
           }
         },
         y: {
@@ -464,8 +461,7 @@ function renderChart() {
             callback: (value) => `${value} W`
           },
           grid: {
-            color: 'rgba(176, 190, 197, 0.1)',
-            drawBorder: false
+            color: 'rgba(176, 190, 197, 0.1)'
           }
         }
       }
