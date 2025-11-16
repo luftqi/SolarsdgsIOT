@@ -46,7 +46,14 @@ function formatFileSize(bytes?: number): string {
 // 載入圖像
 async function loadImage(): Promise<void> {
   if (!props.deviceId) return;
+  console.log('[LatestImageCard] 載入圖像 - Device ID:', props.deviceId);
   await fetchLatestImage(props.deviceId);
+  console.log('[LatestImageCard] 圖像載入結果:', {
+    hasImage: hasLatestImage.value,
+    rgbUrl: latestRgbThumbnailUrl.value,
+    thermalUrl: latestThermalThumbnailUrl.value,
+    error: error.value
+  });
 }
 
 // 開啟完整圖像

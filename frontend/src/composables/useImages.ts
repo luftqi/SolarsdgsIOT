@@ -49,12 +49,17 @@ export function useImages() {
     loading.value = true;
     error.value = null;
 
+    console.log('[useImages] 開始載入最新圖像 - Device ID:', deviceId);
+
     try {
       const result = await imageApi.getLatestImage(deviceId);
       latestImage.value = result;
+      console.log('[useImages] 圖像載入成功:', result);
+      console.log('[useImages] RGB 縮圖 URL:', latestRgbThumbnailUrl.value);
+      console.log('[useImages] 熱影像縮圖 URL:', latestThermalThumbnailUrl.value);
     } catch (err: any) {
       error.value = err.message || 'Failed to fetch latest image';
-      console.error('Error fetching latest image:', err);
+      console.error('[useImages] 圖像載入失敗:', err);
     } finally {
       loading.value = false;
     }
