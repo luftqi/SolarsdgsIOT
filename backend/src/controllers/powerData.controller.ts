@@ -228,9 +228,6 @@ export class PowerDataController {
     const deviceTimezone = deviceResult.rows[0].timezone || 'UTC';
 
     // 計算時間範圍：使用設備所在時區的當前時間
-    // 先獲取 UTC 時間，然後根據設備時區調整
-    const now = new Date();
-
     // 使用 PostgreSQL 的 timezone 函數來獲取設備時區的當前時間
     const timezoneQuery = `SELECT NOW() AT TIME ZONE $1 as device_now`;
     const timezoneResult = await this.powerDataRepo['pool'].query(timezoneQuery, [deviceTimezone]);
