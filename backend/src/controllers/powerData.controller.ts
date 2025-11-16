@@ -217,12 +217,31 @@ export class PowerDataController {
       throw new BadRequestError('points must be between 1 and 1000');
     }
 
-    // 計算時間範圍：從現在往前推算
-    const endTime = new Date();
+    // 獲取設備時區資訊
+    const deviceQuery = `SELECT timezone FROM devices WHERE device_id = $1`;
+    const deviceResult = await this.powerDataRepo['pool'].query(deviceQuery, [deviceId]);
+
+    if (deviceResult.rows.length === 0) {
+      throw new NotFoundError(`Device ${deviceId}`);
+    }
+
+    const deviceTimezone = deviceResult.rows[0].timezone || 'UTC';
+
+    // 計算時間範圍：使用設備所在時區的當前時間
+    // 先獲取 UTC 時間，然後根據設備時區調整
+    const now = new Date();
+
+    // 使用 PostgreSQL 的 timezone 函數來獲取設備時區的當前時間
+    const timezoneQuery = `SELECT NOW() AT TIME ZONE $1 as device_now`;
+    const timezoneResult = await this.powerDataRepo['pool'].query(timezoneQuery, [deviceTimezone]);
+    const deviceNow = new Date(timezoneResult.rows[0].device_now);
+
+    // 轉回 UTC 用於查詢（因為資料庫存的是 UTC）
+    const endTime = deviceNow;
     const startTime = new Date(endTime.getTime() - interval * points * 60 * 1000);
 
     logger.info(
-      `Getting aggregated data for device ${deviceId}: interval=${interval}min, points=${points}, range=${startTime.toISOString()} to ${endTime.toISOString()}`
+      `Getting aggregated data for device ${deviceId}: interval=${interval}min, points=${points}, timezone=${deviceTimezone}, range=${startTime.toISOString()} to ${endTime.toISOString()}`
     );
 
     const data = await this.powerDataRepo.getAggregatedData(
@@ -239,6 +258,7 @@ export class PowerDataController {
         deviceId,
         interval,
         points,
+        timezone: deviceTimezone,
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
         count: data.length,
