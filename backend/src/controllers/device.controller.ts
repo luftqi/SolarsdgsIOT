@@ -1,5 +1,5 @@
 /**
- * Device Controller
+ * Device Controller - Phase 2.4 (多租戶權限控制)
  *
  * 處理設備相關的 HTTP 請求
  */
@@ -10,6 +10,18 @@ import { NotFoundError } from '../utils/errors';
 import { Logger } from '../utils/logger';
 
 const logger = new Logger('DeviceController');
+
+/**
+ * 擴展 Express Request，添加 user 屬性（來自 authMiddleware）
+ */
+interface AuthRequest extends Request {
+  user?: {
+    customerId: number;
+    customerCode: string;
+    customerName: string;
+    devices: string[];
+  };
+}
 
 export class DeviceController {
   private pool;
@@ -22,11 +34,16 @@ export class DeviceController {
   /**
    * GET /api/devices
    *
-   * 獲取所有設備列表
+   * 獲取所有設備列表（僅返回用戶有權訪問的設備）
+   * Phase 2.4: 根據 JWT Token 中的 devices 列表過濾
    */
-  async getAll(_req: Request, res: Response): Promise<void> {
-    logger.info('Getting all devices');
+  async getAll(req: Request, res: Response): Promise<void> {
+    const authReq = req as AuthRequest;
+    const userDevices = authReq.user?.devices || [];
 
+    logger.info(`Getting devices for user ${authReq.user?.customerCode}, allowed devices: ${userDevices.join(', ')}`);
+
+    // Phase 2.4: 只查詢用戶有權訪問的設備
     const query = `
       SELECT
         d.device_id,
@@ -40,10 +57,11 @@ export class DeviceController {
         c.factor_p
       FROM devices d
       LEFT JOIN device_config c ON d.device_id = c.device_id
+      WHERE d.device_id = ANY($1::text[])
       ORDER BY d.device_id;
     `;
 
-    const result = await this.pool.query(query);
+    const result = await this.pool.query(query, [userDevices]);
 
     res.json({
       success: true,
