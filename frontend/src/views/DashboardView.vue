@@ -161,13 +161,13 @@ const logoPath = ref('/logo.png')
 // 設備資料介面
 interface PowerData {
   id: number
-  device_id: string
+  deviceId: string
   timestamp: string
   pg: number
   pa: number
   pp: number
-  pga_efficiency: number
-  pgp_efficiency: number
+  pagEfficiency: number  // 修正: 使用正確的欄位名稱
+  pgpEfficiency: number  // 修正: 使用正確的欄位名稱
 }
 
 interface DeviceInfo {
@@ -197,11 +197,19 @@ let refreshInterval: NodeJS.Timeout | null = null
 
 // 計算效率
 const pagEfficiency = computed(() => {
-  return latestData.value?.pga_efficiency || 0
+  if (!latestData.value?.pagEfficiency) return 0
+  // 將字串轉為數字
+  return typeof latestData.value.pagEfficiency === 'string'
+    ? parseFloat(latestData.value.pagEfficiency)
+    : latestData.value.pagEfficiency
 })
 
 const ppgEfficiency = computed(() => {
-  return latestData.value?.pgp_efficiency || 0
+  if (!latestData.value?.pgpEfficiency) return 0
+  // 將字串轉為數字
+  return typeof latestData.value.pgpEfficiency === 'string'
+    ? parseFloat(latestData.value.pgpEfficiency)
+    : latestData.value.pgpEfficiency
 })
 
 // 格式化函數
@@ -247,7 +255,7 @@ function formatDateTime(dateStr?: string): string {
   }
 }
 
-// 載入 Dashboard 數據
+// 初始載入 Dashboard（只在首次載入時顯示 loading）
 async function loadDashboard() {
   loading.value = true
   error.value = ''
@@ -271,28 +279,7 @@ async function loadDashboard() {
       return
     }
 
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://72.61.117.219:3000'
-
-    const deviceResponse = await axios.get(
-      `${apiUrl}/api/devices/${deviceId.value}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
-
-    if (deviceResponse.data.success) {
-      deviceInfo.value = deviceResponse.data.data
-    }
-
-    const latestResponse = await axios.get(
-      `${apiUrl}/api/power-data/${deviceId.value}/latest`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
-
-    if (latestResponse.data.success) {
-      latestData.value = latestResponse.data.data
-    }
-
-    await loadHistoricalData()
-
+    await refreshData()
     isConnected.value = true
     console.log('Dashboard loaded successfully')
 
@@ -312,6 +299,43 @@ async function loadDashboard() {
     isConnected.value = false
   } finally {
     loading.value = false
+  }
+}
+
+// 刷新數據（靜默更新，不顯示 loading，避免閃爍）
+async function refreshData() {
+  try {
+    const token = localStorage.getItem('token')
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://72.61.117.219:3000'
+
+    // 並行載入設備資訊和最新數據
+    const [deviceResponse, latestResponse] = await Promise.all([
+      axios.get(
+        `${apiUrl}/api/devices/${deviceId.value}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      ),
+      axios.get(
+        `${apiUrl}/api/power-data/${deviceId.value}/latest`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+    ])
+
+    if (deviceResponse.data.success) {
+      deviceInfo.value = deviceResponse.data.data
+    }
+
+    if (latestResponse.data.success) {
+      latestData.value = latestResponse.data.data
+    }
+
+    await loadHistoricalData()
+
+  } catch (err: any) {
+    console.error('Data refresh error:', err)
+    // 靜默失敗，不影響用戶體驗
+    if (err.response?.status === 401) {
+      router.push('/login')
+    }
   }
 }
 
@@ -356,10 +380,17 @@ function renderChart() {
   const paData = historicalData.value.map(item => item.pa)
   const ppData = historicalData.value.map(item => item.pp)
 
+  // 如果圖表已存在，只更新數據（避免閃爍）
   if (chartInstance) {
-    chartInstance.destroy()
+    chartInstance.data.labels = labels
+    chartInstance.data.datasets[0].data = pgData
+    chartInstance.data.datasets[1].data = paData
+    chartInstance.data.datasets[2].data = ppData
+    chartInstance.update('none')  // 'none' 模式：不使用動畫，立即更新
+    return
   }
 
+  // 首次創建圖表
   const config: ChartConfiguration = {
     type: 'line',
     data: {
@@ -485,8 +516,9 @@ function handleLogout() {
 onMounted(() => {
   loadDashboard()
 
+  // 每 5 秒靜默刷新數據（不閃爍）
   refreshInterval = setInterval(() => {
-    loadDashboard()
+    refreshData()
   }, 5000)
 })
 
