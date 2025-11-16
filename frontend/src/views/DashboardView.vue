@@ -160,8 +160,8 @@
                 <option value="360">6 小時/點 (過去 15 天)</option>
                 <option value="1440">1 天/點 (過去 60 天)</option>
               </select>
-              <button @click="downloadPowerData" class="btn-download" :disabled="downloadingData">
-                {{ downloadingData ? '📥 下載中...' : '📥 下載資料 (CSV)' }}
+              <button @click="openDownloadModal" class="btn-download">
+                📥 下載資料 (CSV)
               </button>
             </div>
           </div>
@@ -197,6 +197,45 @@
           :auto-refresh="true"
           :refresh-interval="60"
         />
+      </div>
+    </div>
+
+    <!-- CSV 下載模態框 -->
+    <div v-if="showDownloadModal" class="modal-overlay" @click="closeDownloadModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3>📥 下載發電資料 (CSV)</h3>
+          <button @click="closeDownloadModal" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="date-picker-group">
+            <label for="start-date">開始日期:</label>
+            <input
+              id="start-date"
+              v-model="downloadStartDate"
+              type="datetime-local"
+              class="date-input"
+            />
+          </div>
+          <div class="date-picker-group">
+            <label for="end-date">結束日期:</label>
+            <input
+              id="end-date"
+              v-model="downloadEndDate"
+              type="datetime-local"
+              class="date-input"
+            />
+          </div>
+          <div class="modal-hint">
+            💡 將下載指定時間範圍內的所有原始數據（未經聚合）
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button @click="closeDownloadModal" class="btn-cancel">取消</button>
+          <button @click="downloadPowerData" class="btn-confirm" :disabled="downloadingData">
+            {{ downloadingData ? '下載中...' : '確認下載' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -285,6 +324,9 @@ const updatingFactor = ref(false)
 
 // 下載狀態
 const downloadingData = ref(false)
+const showDownloadModal = ref(false)
+const downloadStartDate = ref('')
+const downloadEndDate = ref('')
 
 // 計算效率
 const pagEfficiency = computed(() => {
@@ -844,17 +886,54 @@ function resetFactors() {
   factorP.value = 1.0
 }
 
+// 開啟下載模態框
+function openDownloadModal() {
+  // 設置預設時間範圍：過去 7 天
+  const endTime = new Date()
+  const startTime = new Date(endTime.getTime() - 7 * 24 * 60 * 60 * 1000)
+
+  // 轉換為 datetime-local 格式 (YYYY-MM-DDTHH:mm)
+  downloadEndDate.value = endTime.toISOString().slice(0, 16)
+  downloadStartDate.value = startTime.toISOString().slice(0, 16)
+
+  showDownloadModal.value = true
+}
+
+// 關閉下載模態框
+function closeDownloadModal() {
+  showDownloadModal.value = false
+  downloadStartDate.value = ''
+  downloadEndDate.value = ''
+}
+
 // 下載發電資料 (CSV)
 async function downloadPowerData() {
   if (downloadingData.value) return
+
+  // 驗證日期
+  if (!downloadStartDate.value || !downloadEndDate.value) {
+    alert('請選擇開始和結束日期')
+    return
+  }
+
+  const startTime = new Date(downloadStartDate.value)
+  const endTime = new Date(downloadEndDate.value)
+
+  if (startTime >= endTime) {
+    alert('開始日期必須早於結束日期')
+    return
+  }
+
+  // 檢查時間範圍（最多 90 天）
+  const daysDiff = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60 * 24)
+  if (daysDiff > 90) {
+    alert('時間範圍不能超過 90 天')
+    return
+  }
+
   downloadingData.value = true
 
   try {
-    // 計算時間範圍
-    const minutes = parseInt(chartTimeRange.value)
-    const endTime = new Date()
-    const startTime = new Date(endTime.getTime() - minutes * 60 * 1000)
-
     // 獲取數據
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
     const response = await axios.get(`${apiUrl}/api/power-data/device/${deviceId.value}/range`, {
@@ -864,9 +943,9 @@ async function downloadPowerData() {
       }
     })
 
-    const data = response.data.data || []
+    const records = response.data.data.records || []
 
-    if (data.length === 0) {
+    if (records.length === 0) {
       alert('沒有可下載的數據')
       return
     }
@@ -882,14 +961,14 @@ async function downloadPowerData() {
       'PGP Efficiency (%)'
     ]
 
-    const rows = data.map((item: PowerData) => [
+    const rows = records.map((item: any) => [
       new Date(item.timestamp).toLocaleString('zh-TW'),
-      item.deviceId,
+      item.device_id,
       item.pg,
       item.pa,
       item.pp,
-      item.pagEfficiency?.toFixed(2) || '0.00',
-      item.pgpEfficiency?.toFixed(2) || '0.00'
+      item.pga_efficiency?.toFixed(2) || '0.00',
+      item.pgp_efficiency?.toFixed(2) || '0.00'
     ])
 
     const csvContent = [
@@ -901,21 +980,20 @@ async function downloadPowerData() {
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
-    const timeLabel = chartTimeRange.value === '60' ? '1小時' :
-                      chartTimeRange.value === '180' ? '3小時' :
-                      chartTimeRange.value === '360' ? '6小時' :
-                      chartTimeRange.value === '720' ? '12小時' :
-                      chartTimeRange.value === '1440' ? '1天' :
-                      chartTimeRange.value === '4320' ? '3天' :
-                      chartTimeRange.value === '10080' ? '1週' : chartTimeRange.value + '分鐘'
+    const startLabel = startTime.toISOString().split('T')[0]
+    const endLabel = endTime.toISOString().split('T')[0]
     link.href = url
-    link.download = `${deviceId.value}_power_data_${timeLabel}_${new Date().toISOString().split('T')[0]}.csv`
+    link.download = `${deviceId.value}_power_data_${startLabel}_to_${endLabel}.csv`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
 
-    console.log(`✅ CSV 下載成功 - ${data.length} 筆資料`)
+    console.log(`✅ CSV 下載成功 - ${records.length} 筆資料`)
+    alert(`✅ CSV 下載成功！\n共 ${records.length} 筆資料`)
+
+    // 關閉模態框
+    closeDownloadModal()
   } catch (err: any) {
     console.error('❌ CSV 下載失敗:', err)
     alert('下載失敗: ' + (err.message || '未知錯誤'))
@@ -1613,5 +1691,142 @@ onUnmounted(() => {
   color: #ecf0f1;
   font-size: 13px;
   line-height: 1.6;
+}
+
+/* Modal 樣式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modal-content {
+  background: #2c3e50;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 2px solid #34495e;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #ecf0f1;
+  font-size: 20px;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: #ecf0f1;
+  font-size: 32px;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  line-height: 32px;
+  transition: color 0.3s;
+}
+
+.modal-close:hover {
+  color: #e74c3c;
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.date-picker-group {
+  margin-bottom: 20px;
+}
+
+.date-picker-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #ecf0f1;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.date-input {
+  width: 100%;
+  padding: 12px;
+  background: #34495e;
+  border: 2px solid #4a5f7f;
+  border-radius: 6px;
+  color: #ecf0f1;
+  font-size: 14px;
+  transition: border-color 0.3s;
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.modal-hint {
+  padding: 12px;
+  background: rgba(52, 152, 219, 0.1);
+  border-left: 4px solid #3498db;
+  border-radius: 4px;
+  color: #b0bec5;
+  font-size: 13px;
+  margin-top: 16px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px;
+  border-top: 2px solid #34495e;
+}
+
+.btn-cancel, .btn-confirm {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-cancel {
+  background: #95a5a6;
+  color: white;
+}
+
+.btn-cancel:hover {
+  background: #7f8c8d;
+}
+
+.btn-confirm {
+  background: #3498db;
+  color: white;
+}
+
+.btn-confirm:hover:not(:disabled) {
+  background: #2980b9;
+}
+
+.btn-confirm:disabled {
+  background: #7f8c8d;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 </style>
