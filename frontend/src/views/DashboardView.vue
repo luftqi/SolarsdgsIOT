@@ -539,13 +539,35 @@ function renderChart() {
     return
   }
 
+  // 根據時間範圍自適應標籤格式
   const labels = historicalData.value.map(item => {
     const date = new Date(item.timestamp)
-    return date.toLocaleTimeString('zh-TW', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    })
+    const selectedInterval = timeGranularityOptions.find(opt => opt.value === chartTimeRange.value)
+    const totalMinutes = selectedInterval ? selectedInterval.interval * 60 : 60
+
+    // 根據時間範圍決定標籤格式
+    if (totalMinutes >= 1440) {
+      // >= 1 天：顯示 月/日 時:分
+      return date.toLocaleString('zh-TW', {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    } else if (totalMinutes >= 360) {
+      // >= 6 小時：顯示 時:分
+      return date.toLocaleTimeString('zh-TW', {
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    } else {
+      // < 6 小時：顯示 時:分:秒
+      return date.toLocaleTimeString('zh-TW', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
+    }
   })
 
   const pgData = historicalData.value.map(item => item.pg)
@@ -697,13 +719,35 @@ function renderEfficiencyChart() {
     return
   }
 
+  // 根據時間範圍自適應標籤格式（與功率圖表一致）
   const labels = historicalData.value.map(item => {
     const date = new Date(item.timestamp)
-    return date.toLocaleTimeString('zh-TW', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    })
+    const selectedInterval = timeGranularityOptions.find(opt => opt.value === chartTimeRange.value)
+    const totalMinutes = selectedInterval ? selectedInterval.interval * 60 : 60
+
+    // 根據時間範圍決定標籤格式
+    if (totalMinutes >= 1440) {
+      // >= 1 天：顯示 月/日 時:分
+      return date.toLocaleString('zh-TW', {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    } else if (totalMinutes >= 360) {
+      // >= 6 小時：顯示 時:分
+      return date.toLocaleTimeString('zh-TW', {
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    } else {
+      // < 6 小時：顯示 時:分:秒
+      return date.toLocaleTimeString('zh-TW', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
+    }
   })
 
   const pagData = historicalData.value.map(item => item.pagEfficiency || 0)
