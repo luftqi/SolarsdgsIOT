@@ -60,6 +60,17 @@ solarsdgs.online, www.solarsdgs.online {
 
 # API 端點 - Backend API + WebSocket
 api.solarsdgs.online {
+	# 圖片靜態檔案服務 (Phase 3.1)
+	@images {
+		path /uploads/images/*
+	}
+	handle @images {
+		root * /app
+		file_server
+		header Cache-Control "public, max-age=86400"
+	}
+
+	# API 請求反向代理
 	reverse_proxy backend:3000
 
 	# WebSocket 支援

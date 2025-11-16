@@ -13,6 +13,7 @@ services:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
       - caddy_config:/config
+      - image_uploads:/app/uploads/images:ro
     networks:
       - solarsdgs-network
     depends_on:
@@ -86,6 +87,7 @@ services:
       - "3000:3000"
     volumes:
       - ../backend/logs:/app/logs
+      - image_uploads:/app/uploads/images
     depends_on:
       postgres:
         condition: service_healthy
@@ -126,6 +128,8 @@ volumes:
     name: solarsdgs-caddy-data
   caddy_config:
     name: solarsdgs-caddy-config
+  image_uploads:
+    name: solarsdgs-image-uploads
 
 networks:
   solarsdgs-network:

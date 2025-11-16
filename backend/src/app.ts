@@ -17,6 +17,7 @@ import { createPowerDataRoutes } from './routes/powerDataRoutes';
 import { createAuthRoutes } from './routes/authRoutes';
 import gpsRoutes from './routes/gps.routes';
 import healthRoutes from './routes/health.routes';
+import imageRoutes from './routes/image.routes';
 
 // Middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -90,6 +91,7 @@ export function createApp(deps?: AppDependencies): Application {
   app.use('/api/power-data', powerDataRoutes);
   app.use('/api/power-data', createPowerDataRoutes());  // Phase 2 routes
   app.use('/api/gps', gpsRoutes);
+  app.use('/api/images', imageRoutes);  // Phase 3.1 routes
 
   // Dashboard routes
   app.get('/dashboard', (_req: Request, res: Response) => {
@@ -116,6 +118,7 @@ export function createApp(deps?: AppDependencies): Application {
         devices: '/api/devices',
         powerData: '/api/power-data',
         gps: '/api/gps',
+        images: '/api/images',
         dashboard: '/dashboard',
       },
     });
