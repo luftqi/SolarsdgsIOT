@@ -22,9 +22,17 @@ client.on('connect', () => {
 
     // 生成模擬數據
     const timestamp = new Date().toISOString().replace(/T/, '_').replace(/\..+/, '').replace(/:/g, '_').replace(/-/g, '_');
-    const pg = Math.floor(Math.random() * 500) + 800; // 800-1300W
-    const pa = Math.floor(Math.random() * 300) + 200; // 200-500W
-    const pp = Math.floor(Math.random() * 200) + 100; // 100-300W
+
+    // PG: 基礎功率 (800-1300W)
+    const pg = Math.floor(Math.random() * 500) + 800;
+
+    // PA: 比 PG 高約 5% (±2% 隨機變化)
+    const paFactor = 1.05 + (Math.random() * 0.04 - 0.02); // 1.03 ~ 1.07
+    const pa = Math.floor(pg * paFactor);
+
+    // PP: 比 PG 高約 2% (±1% 隨機變化)
+    const ppFactor = 1.02 + (Math.random() * 0.02 - 0.01); // 1.01 ~ 1.03
+    const pp = Math.floor(pg * ppFactor);
 
     // 修正格式: timestamp/pg/pa/pp (4個部分)
     const message = `${timestamp}/${pg}/${pa}/${pp}`;
