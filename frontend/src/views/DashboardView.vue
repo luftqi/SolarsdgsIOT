@@ -1319,6 +1319,13 @@ onUnmounted(() => {
   box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.3);
 }
 
+.time-range-select option {
+  background: #263238;
+  color: #ecf0f1;
+  padding: 8px;
+  font-size: 14px;
+}
+
 .btn-download {
   padding: 8px 16px;
   background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
