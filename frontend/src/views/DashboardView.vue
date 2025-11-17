@@ -170,12 +170,12 @@
           </div>
         </div>
 
-        <!-- 效率趨勢圖 (新增) -->
+        <!-- PGA 效率趨勢圖 -->
         <div class="chart-section">
           <div class="section-header">
-            <h2 class="section-title">效率趨勢圖 (PGA% / PGP%)</h2>
+            <h2 class="section-title">PGA 效率趨勢圖 (%)</h2>
             <div class="chart-controls">
-              <select v-model="efficiencyTimeRange" @change="updateEfficiencyChart" class="time-range-select">
+              <select v-model="efficiencyTimeRange" @change="updateEfficiencyCharts" class="time-range-select">
                 <option value="60">最近 1 小時</option>
                 <option value="180">最近 3 小時</option>
                 <option value="360">最近 6 小時</option>
@@ -187,7 +187,28 @@
             </div>
           </div>
           <div class="chart-container">
-            <canvas ref="efficiencyChartCanvas"></canvas>
+            <canvas ref="pagChartCanvas"></canvas>
+          </div>
+        </div>
+
+        <!-- PGP 效率趨勢圖 -->
+        <div class="chart-section">
+          <div class="section-header">
+            <h2 class="section-title">PGP 效率趨勢圖 (%)</h2>
+            <div class="chart-controls">
+              <select v-model="efficiencyTimeRange" @change="updateEfficiencyCharts" class="time-range-select">
+                <option value="60">最近 1 小時</option>
+                <option value="180">最近 3 小時</option>
+                <option value="360">最近 6 小時</option>
+                <option value="720">最近 12 小時</option>
+                <option value="1440">最近 1 天</option>
+                <option value="4320">最近 3 天</option>
+                <option value="10080">最近 1 週</option>
+              </select>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas ref="pgpChartCanvas"></canvas>
           </div>
         </div>
 
@@ -320,10 +341,12 @@ const dataCount = ref(0)
 const chartCanvas = ref<HTMLCanvasElement | null>(null)
 // 時間粒度（分鐘/點）
 const chartTimeRange = ref('10')  // 預設 10 分鐘/點
-const efficiencyChartCanvas = ref<HTMLCanvasElement | null>(null)
+const pagChartCanvas = ref<HTMLCanvasElement | null>(null)
+const pgpChartCanvas = ref<HTMLCanvasElement | null>(null)
 const efficiencyTimeRange = ref('60')
 let chartInstance: Chart | null = null
-let efficiencyChartInstance: Chart | null = null
+let pagChartInstance: Chart | null = null
+let pgpChartInstance: Chart | null = null
 let refreshInterval: NodeJS.Timeout | null = null
 
 // Factor 設定
@@ -522,7 +545,8 @@ async function loadHistoricalData() {
       console.log(`[loadHistoricalData] 成功載入 ${dataCount.value} 筆聚合數據`)
 
       renderChart()
-      renderEfficiencyChart()
+      renderPagChart()
+      renderPgpChart()
     }
   } catch (err) {
     console.error('Failed to load historical data:', err)
@@ -533,8 +557,9 @@ function updateChart() {
   loadHistoricalData()
 }
 
-function updateEfficiencyChart() {
-  renderEfficiencyChart()
+function updateEfficiencyCharts() {
+  renderPagChart()
+  renderPgpChart()
 }
 
 function renderChart() {
@@ -725,91 +750,70 @@ function renderChart() {
   }
 }
 
-// 效率趨勢圖渲染
-function renderEfficiencyChart() {
-  if (!efficiencyChartCanvas.value) {
-    console.error('Efficiency canvas element not found!')
+// PGA 效率趨勢圖渲染（Bar Chart）
+function renderPagChart() {
+  if (!pagChartCanvas.value) {
+    console.error('PGA canvas element not found!')
     return
   }
 
   if (historicalData.value.length === 0) {
-    console.warn('No historical data for efficiency chart')
+    console.warn('No historical data for PGA chart')
     return
   }
 
-  // 根據時間範圍自適應標籤格式（與功率圖表一致，使用設備所在時區）
+  // 生成時間標籤
   const labels = historicalData.value.map(item => {
     const date = new Date(item.timestamp)
     const intervalMinutes = parseInt(chartTimeRange.value)
-    const totalMinutes = intervalMinutes * 60  // 總時間範圍（分鐘）
+    const totalMinutes = intervalMinutes * 60
 
-    // 根據時間範圍決定標籤格式
     if (totalMinutes >= 1440) {
-      // >= 1 天：顯示 月/日 時:分
       return date.toLocaleString('zh-TW', {
         month: '2-digit',
         day: '2-digit',
         hour: '2-digit',
         minute: '2-digit',
-        timeZone: deviceTimezone.value  // 使用設備時區
+        timeZone: deviceTimezone.value
       })
     } else if (totalMinutes >= 360) {
-      // >= 6 小時：顯示 時:分
       return date.toLocaleTimeString('zh-TW', {
         hour: '2-digit',
         minute: '2-digit',
-        timeZone: deviceTimezone.value  // 使用設備時區
+        timeZone: deviceTimezone.value
       })
     } else {
-      // < 6 小時：顯示 時:分:秒
       return date.toLocaleTimeString('zh-TW', {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        timeZone: deviceTimezone.value  // 使用設備時區
+        timeZone: deviceTimezone.value
       })
     }
   })
 
-  const pagData = historicalData.value.map(item => item.pagEfficiency || 0)
-  const pgpData = historicalData.value.map(item => item.pgpEfficiency || 0)
+  const pagData = historicalData.value.map(item => item.pag_efficiency || 0)
 
-  // 如果圖表已存在,只更新數據
-  if (efficiencyChartInstance) {
-    efficiencyChartInstance.data.labels = labels
-    efficiencyChartInstance.data.datasets[0].data = pagData
-    efficiencyChartInstance.data.datasets[1].data = pgpData
-    efficiencyChartInstance.update('none')
+  // 如果圖表已存在，只更新數據
+  if (pagChartInstance) {
+    pagChartInstance.data.labels = labels
+    pagChartInstance.data.datasets[0].data = pagData
+    pagChartInstance.update('none')
     return
   }
 
-  // 首次創建效率圖表
+  // 首次創建 PGA 圖表（Bar Chart）
   const config: ChartConfiguration = {
-    type: 'line',
+    type: 'bar',
     data: {
       labels,
       datasets: [
         {
           label: 'PGA 效率 (%)',
           data: pagData,
+          backgroundColor: 'rgba(33, 150, 243, 0.7)',
           borderColor: '#2196F3',
-          backgroundColor: 'rgba(33, 150, 243, 0.1)',
-          borderWidth: 3,
-          tension: 0.4,
-          fill: true,
-          pointRadius: 2,
-          pointHoverRadius: 6
-        },
-        {
-          label: 'PGP 效率 (%)',
-          data: pgpData,
-          borderColor: '#4CAF50',
-          backgroundColor: 'rgba(76, 175, 80, 0.1)',
-          borderWidth: 3,
-          tension: 0.4,
-          fill: true,
-          pointRadius: 2,
-          pointHoverRadius: 6
+          borderWidth: 1
         }
       ]
     },
@@ -825,30 +829,20 @@ function renderEfficiencyChart() {
           display: false
         },
         legend: {
-          display: true,
-          position: 'top',
-          labels: {
-            color: '#ecf0f1',
-            font: {
-              size: 14,
-              weight: 'bold'
-            },
-            padding: 15,
-            usePointStyle: true
-          }
+          display: false
         },
         tooltip: {
           backgroundColor: 'rgba(0, 0, 0, 0.8)',
           titleColor: '#FFC107',
           bodyColor: '#ecf0f1',
-          borderColor: '#FFC107',
+          borderColor: '#2196F3',
           borderWidth: 1,
           padding: 12,
           displayColors: true,
           callbacks: {
             label: (context) => {
               const value = context.parsed.y
-              return `${context.dataset.label}: ${value !== null ? value.toFixed(2) : '0.00'}%`
+              return `PGA 效率: ${value !== null ? value.toFixed(2) : '0.00'}%`
             }
           }
         }
@@ -857,22 +851,19 @@ function renderEfficiencyChart() {
         x: {
           ticks: {
             color: '#b0bec5',
-            font: {
-              size: 11
-            },
+            font: { size: 11 },
             autoSkip: true,
-            maxTicksLimit: 10  // 最多顯示 10 個標籤
+            maxTicksLimit: 10
           },
           grid: {
             color: 'rgba(176, 190, 197, 0.1)'
           }
         },
         y: {
+          beginAtZero: true,
           ticks: {
             color: '#b0bec5',
-            font: {
-              size: 12
-            },
+            font: { size: 12 },
             callback: (value) => `${value}%`
           },
           grid: {
@@ -884,10 +875,142 @@ function renderEfficiencyChart() {
   }
 
   try {
-    efficiencyChartInstance = new Chart(efficiencyChartCanvas.value, config)
-    console.log('Efficiency chart created successfully!')
+    pagChartInstance = new Chart(pagChartCanvas.value, config)
+    console.log('PGA chart created successfully!')
   } catch (error) {
-    console.error('Failed to create efficiency chart:', error)
+    console.error('Failed to create PGA chart:', error)
+  }
+}
+
+// PGP 效率趨勢圖渲染（Bar Chart）
+function renderPgpChart() {
+  if (!pgpChartCanvas.value) {
+    console.error('PGP canvas element not found!')
+    return
+  }
+
+  if (historicalData.value.length === 0) {
+    console.warn('No historical data for PGP chart')
+    return
+  }
+
+  // 生成時間標籤
+  const labels = historicalData.value.map(item => {
+    const date = new Date(item.timestamp)
+    const intervalMinutes = parseInt(chartTimeRange.value)
+    const totalMinutes = intervalMinutes * 60
+
+    if (totalMinutes >= 1440) {
+      return date.toLocaleString('zh-TW', {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: deviceTimezone.value
+      })
+    } else if (totalMinutes >= 360) {
+      return date.toLocaleTimeString('zh-TW', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: deviceTimezone.value
+      })
+    } else {
+      return date.toLocaleTimeString('zh-TW', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZone: deviceTimezone.value
+      })
+    }
+  })
+
+  const pgpData = historicalData.value.map(item => item.pgp_efficiency || 0)
+
+  // 如果圖表已存在，只更新數據
+  if (pgpChartInstance) {
+    pgpChartInstance.data.labels = labels
+    pgpChartInstance.data.datasets[0].data = pgpData
+    pgpChartInstance.update('none')
+    return
+  }
+
+  // 首次創建 PGP 圖表（Bar Chart）
+  const config: ChartConfiguration = {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'PGP 效率 (%)',
+          data: pgpData,
+          backgroundColor: 'rgba(76, 175, 80, 0.7)',
+          borderColor: '#4CAF50',
+          borderWidth: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        title: {
+          display: false
+        },
+        legend: {
+          display: false
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          titleColor: '#FFC107',
+          bodyColor: '#ecf0f1',
+          borderColor: '#4CAF50',
+          borderWidth: 1,
+          padding: 12,
+          displayColors: true,
+          callbacks: {
+            label: (context) => {
+              const value = context.parsed.y
+              return `PGP 效率: ${value !== null ? value.toFixed(2) : '0.00'}%`
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: '#b0bec5',
+            font: { size: 11 },
+            autoSkip: true,
+            maxTicksLimit: 10
+          },
+          grid: {
+            color: 'rgba(176, 190, 197, 0.1)'
+          }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: '#b0bec5',
+            font: { size: 12 },
+            callback: (value) => `${value}%`
+          },
+          grid: {
+            color: 'rgba(176, 190, 197, 0.1)'
+          }
+        }
+      }
+    }
+  }
+
+  try {
+    pgpChartInstance = new Chart(pgpChartCanvas.value, config)
+    console.log('PGP chart created successfully!')
+  } catch (error) {
+    console.error('Failed to create PGP chart:', error)
   }
 }
 
@@ -1095,8 +1218,11 @@ onUnmounted(() => {
   if (chartInstance) {
     chartInstance.destroy()
   }
-  if (efficiencyChartInstance) {
-    efficiencyChartInstance.destroy()
+  if (pagChartInstance) {
+    pagChartInstance.destroy()
+  }
+  if (pgpChartInstance) {
+    pgpChartInstance.destroy()
   }
 })
 </script>
