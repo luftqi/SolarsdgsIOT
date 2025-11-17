@@ -279,7 +279,9 @@ import {
   LinearScale,
   PointElement,
   LineElement,
-  LineController,  // 新增: LineController 是必需的！
+  LineController,
+  BarElement,
+  BarController,
   Title,
   Tooltip,
   Legend,
@@ -295,7 +297,9 @@ Chart.register(
   LinearScale,
   PointElement,
   LineElement,
-  LineController,  // 新增: 註冊 LineController
+  LineController,
+  BarElement,
+  BarController,
   Title,
   Tooltip,
   Legend,
@@ -794,15 +798,13 @@ function renderPagChart() {
 
   const pagData = historicalData.value.map(item => item.pag_efficiency || 0)
 
-  // 如果圖表已存在，只更新數據
+  // 如果圖表已存在，先銷毀再重新創建
   if (pagChartInstance) {
-    pagChartInstance.data.labels = labels
-    pagChartInstance.data.datasets[0].data = pagData
-    pagChartInstance.update('none')
-    return
+    pagChartInstance.destroy()
+    pagChartInstance = null
   }
 
-  // 首次創建 PGA 圖表（Bar Chart）
+  // 創建 PGA 圖表（Bar Chart）
   const config: ChartConfiguration = {
     type: 'bar',
     data: {
@@ -926,15 +928,13 @@ function renderPgpChart() {
 
   const pgpData = historicalData.value.map(item => item.pgp_efficiency || 0)
 
-  // 如果圖表已存在，只更新數據
+  // 如果圖表已存在，先銷毀再重新創建
   if (pgpChartInstance) {
-    pgpChartInstance.data.labels = labels
-    pgpChartInstance.data.datasets[0].data = pgpData
-    pgpChartInstance.update('none')
-    return
+    pgpChartInstance.destroy()
+    pgpChartInstance = null
   }
 
-  // 首次創建 PGP 圖表（Bar Chart）
+  // 創建 PGP 圖表（Bar Chart）
   const config: ChartConfiguration = {
     type: 'bar',
     data: {
